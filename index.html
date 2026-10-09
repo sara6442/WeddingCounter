@@ -23,7 +23,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 .p button+button{left:22px;opacity:.55}.p button.on{opacity:1}
 .p button+button+button{left:41px}
 .p button+button+button+button{left:60px}
-.big{position:absolute;left:50%;top:calc(50% + 17px);transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;border:3px dashed var(--ln);background:var(--card);font-size:40px;color:var(--ink)}
+.big{position:absolute;left:50%;top:calc(50% + 17px);transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;border:3px dashed var(--ln);background:var(--card);font-size:40px;color:var(--ink);display:flex;align-items:center;justify-content:center;line-height:1;padding:0}
 .tb.on{background:#ffd95a;color:#222}.ms .p button,.ms .pl{display:none!important}.p.ms1{outline:3px solid #ffb300;outline-offset:2px}.no{opacity:.5}.no b{text-decoration:line-through}
 .bg{position:absolute;right:-8px;top:-8px;width:20px;height:20px;border-radius:50%;font-style:normal;text-align:center;line-height:20px;font-size:12px;color:#fff;z-index:3}.bg.y{background:#3cb371}.bg.n{background:#e5484d}
 #mb{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:none;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:6px 10px;z-index:40;max-width:94vw}
@@ -31,7 +31,17 @@ button{font:inherit;cursor:pointer;color:inherit}
 .pl{position:absolute;width:20px;height:20px;line-height:16px;text-align:center;background:#fff;color:#222;border:2px solid #555;border-radius:50%;font-size:15px;display:none;z-index:5;text-decoration:none}
 .p:hover .pl,.p.sel .pl{display:block}.p:hover,.p.sel{z-index:9}
 .pl.pt{top:-22px;left:50%;transform:translateX(-50%)}.pl.b{bottom:-22px;left:50%;transform:translateX(-50%)}.pl.l{left:-22px;top:15px}.pl.r{right:-22px;top:15px}
-.plu{position:absolute;left:50%;transform:translateX(-50%);width:26px;height:26px;line-height:22px;text-align:center;background:var(--card);color:var(--ink);border:2px dashed var(--ln);border-radius:50%;font-size:16px;cursor:pointer;z-index:4}
+/* دائرة الإضافة — توسيط حقيقي */
+.plu{
+  position:absolute;
+  width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+  line-height:1; padding:0;
+  background:var(--card); color:var(--ink);
+  border:2px dashed var(--ln); border-radius:50%;
+  font-size:16px; cursor:pointer; z-index:4;
+  transform:translate(-50%,-50%);
+}
 .plu:hover{background:#ffd95a;color:#222}
 .cat{position:absolute;border:2px dashed var(--ln);border-radius:10px 6px 12px 7px;opacity:.85;pointer-events:none}
 .cat .cat-t{position:absolute;right:8px;top:-11px;background:var(--card);padding:0 6px;font-size:11px;font-weight:600;color:var(--ink);border:1px solid var(--ln);border-radius:6px;pointer-events:auto;white-space:nowrap;cursor:pointer;display:flex;gap:4px;align-items:center}
@@ -198,12 +208,12 @@ function render(){
       Object.values(t.persons).forEach(p=>{(byCat[p.cat]=byCat[p.cat]||[]).push(p.id)});
 
       const padTop=42;
-      const padInner=16;
-      const padInnerLeft=34;
+      const padInner=20;             // موحّد يمين ويسار
       const headPad=26;
       const rowH=H+16;
       const cGap=22;
       const catTail=48;
+      const gapCols=16;
 
       let cy=padTop+10;
       let maxCatW=230;
@@ -216,21 +226,25 @@ function render(){
           (p.R||[]).forEach(r=>{if(!used.has(r)&&ids.includes(r)){row.push(r);used.add(r)}});
           rows.push(row)});
         const cols=Math.max(1,...rows.map(r=>r.length));
-        const gapCols=16;
-        const cw=Math.max(200, cols*(W+gapCols) + padInner + padInnerLeft);
+        // عرض المحتوى = عدد الأعمدة × W + الفراغات بينها
+        const rowContentW = cols*W + (cols-1)*gapCols;
+        const cw=Math.max(200, rowContentW + padInner*2);
         const chh=headPad + rows.length*rowH + catTail;
 
+        // ضع الأصدقاء: أول صديق (ci=0) من اليمين بمسافة padInner، ثم لليسار
         rows.forEach((row,ri)=>{
           row.forEach((id,ci)=>{
-            const xRight = padInner + W/2 + ci*(W+gapCols);
-            const x = cw - xRight;
+            // من الحافة اليسرى: آخر عنصر (ci = row.length-1) يبعد padInner + W/2
+            const xFromLeft = padInner + W/2 + (row.length-1-ci)*(W+gapCols);
+            const x = cw - xFromLeft;
             const y = cy + headPad + ri*rowH;
             pos[id]={x:x,y:y};
           });
         });
         const catKey=encodeURIComponent(c);
         extra+=`<div class="cat" style="left:0;top:${cy}px;width:${cw}px;height:${chh}px"><div class="cat-t" data-a="cat-menu" data-cat="${catKey}" data-t="${t.id}">${esc(c)} ✎</div></div>`;
-        extra+=`<button class="plu" data-a="addcat-friend" data-cat="${catKey}" data-t="${t.id}" style="left:${cw/2}px;top:${cy+chh-catTail/2-13}px;transform:translate(-50%,0)" title="إضافة صديق إلى ${esc(c)}">＋</button>`;
+        // دائرة ➕ أسفل الفئة — مركز الدائرة في منتصف الفئة أفقياً
+        extra+=`<button class="plu" data-a="addcat-friend" data-cat="${catKey}" data-t="${t.id}" style="left:${cw/2}px;top:${cy+chh-catTail/2}px" title="إضافة صديق إلى ${esc(c)}">+</button>`;
         maxCatW=Math.max(maxCatW,cw);
         cy += chh + cGap;
       });
