@@ -81,9 +81,9 @@ button{font:inherit;cursor:pointer;color:inherit}
 #wb .row{display:flex;flex-direction:column;gap:4px}
 #wb .row button{width:100%;background:var(--bg);border:2px solid var(--ln);border-radius:6px;padding:5px 6px;font-size:11px;text-align:center}
 #wb .row button:hover{background:#ffd95a;color:#222}
-/* قائمة "أخرى" الجانبية */
-#wbSide{position:fixed;left:150px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:none;flex-direction:column;gap:4px;background:var(--card);border:2px solid var(--ln);border-radius:10px;padding:8px;font-size:12px;width:180px;max-height:60vh;overflow:auto;z-index:25}
-#wbSide button{width:100%;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:4px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* قائمة "أخرى" الجانبية: تبدأ من نفس سطر زر "أخرى" واللوحات تحت بعضها طوليًا */
+#wbSide{position:fixed;left:150px;top:0;display:none;flex-direction:column;align-items:stretch;gap:4px;background:var(--card);border:2px solid var(--ln);border-radius:10px;padding:8px;font-size:12px;width:180px;max-height:60vh;overflow:auto;z-index:25}
+#wbSide button{display:block;width:100%;flex:none;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:4px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #wbSide button:hover{background:#ffd95a;color:#222}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><filter id="wbf"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter></svg>
@@ -267,6 +267,17 @@ function render(){
       // ========== شجرة الأصدقاء ==========
       if(!t.cats)t.cats=[];
       Object.values(t.persons).forEach(p=>{if(!p.cat)p.cat='أصدقاء'});
+      // توحيد الأقارب المتداخلين: كل قريب يرتبط مباشرة بالصديق الأصلي (على نفس الجهة)
+      Object.values(t.persons).forEach(p=>{
+        let o=p.of,g=0;
+        while(o&&t.persons[o]&&t.persons[o].of&&g++<9)o=t.persons[o].of;
+        if(p.of&&o&&o!==p.of&&t.persons[o]){
+          const hh=t.persons[p.of],s=(hh&&(hh.L||[]).includes(p.id))?'L':'R';
+          if(hh){hh.L=(hh.L||[]).filter(x=>x!=p.id);hh.R=(hh.R||[]).filter(x=>x!=p.id)}
+          const r=t.persons[o];(r[s]=r[s]||[]).push(p.id);p.of=o;p.cat=r.cat;
+        }
+        if(p.of&&!t.persons[p.of])delete p.of;
+      });
       const catsArr=Array.from(new Set([...t.cats,...Object.values(t.persons).map(p=>p.cat)]));
       t.cats=catsArr.slice();
       const byCat={};catsArr.forEach(c=>byCat[c]=[]);
@@ -358,7 +369,10 @@ function render(){
     let inner='';
     Object.keys(pos).forEach(id=>{
       const p=t.persons[id];if(!p)return;
-      inner+=ph(t,id,pos[id].x+gapTreeCat,pos[id].y,'lr');
+      // الصديق الأصلي: + على الجهتين. القريب: + على جهته الخارجية فقط ليتسلسل الربط
+      let pl='lr';
+      if(p.of&&t.persons[p.of])pl=((t.persons[p.of].L||[]).includes(id))?'l':'r';
+      inner+=ph(t,id,pos[id].x+gapTreeCat,pos[id].y,pl);
     });
     const anchor=el.querySelector('#frp-'+t.id);
     if(anchor)anchor.outerHTML=inner;
@@ -376,16 +390,16 @@ function links(){
       const p=t.persons[id];if(!p)return;
       const ln=linksOf(p);if(!ln.length)return;
       const q=POS[t.id][id];if(!q)return;
-      // للشجرة العائلية: نقطة الخروج من منتصف الحافة العلوية للفرد
-      // لشجرة الأصدقاء: نقطة الخروج من منتصف الحافة اليمنى
+      // شجرة العائلة: الرابط يخرج من منتصف الحافة العلوية للمستطيل (pos.x هو مركز المستطيل)
+      // شجرة الأصدقاء: يخرج من منتصف الحافة اليمنى
       const isFr = t.ty=='fr';
-      const baseX = isFr ? t.x+q.x+24+W/2 : t.x+q.x+OX[t.id]+W/2;
+      const baseX = isFr ? t.x+q.x+24+W/2 : t.x+q.x+OX[t.id];
       const baseY = isFr ? t.y+q.y+H/2     : t.y+q.y+58+42;   // في شجرة العائلة: أعلى المستطيل
       const total=ln.length;
       ln.forEach((l,idx)=>{
         const c=boardTrees().find(x=>x.id==l.br);if(!c||c.hid)return;
         let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];if(!bp)return;
-        // إزاحة أفقية على الحافة العلوية
+        // إزاحة أفقية صغيرة عند تعدد الروابط من نفس الفرد
         const off = (idx-(total-1)/2)*12;
         const cx = baseX + off;
         const cy = baseY;
@@ -405,14 +419,15 @@ function links(){
           b+=`M${cx} ${cy}V${cy-15}Q${cx} ${ey} ${ex} ${ey}`;
           return;
         }
-        const tx=c.x+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].x+OX[c.id]+W/2:0);
+        // مركز مستطيل الهدف (وليس حافته اليمنى)
+        const tx=c.x+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].x+OX[c.id]:0);
         const tY=c.y+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].y+58+42:0);
         if(l.rel=='p'){
           const cu=c.unions.find(u=>u.s&&(u.p==bp||u.s==bp)&&POS[c.id][u.p]&&POS[c.id][u.s]);
           let ex=tx,ey=tY+H;if(cu){ex=c.x+OX[c.id]+(POS[c.id][cu.p].x+POS[c.id][cu.s].x)/2;ey=tY+H/2}
           a+=`M${cx} ${cy}V${cy-15}L${cx} ${ey+20}L${ex} ${ey+20}V${ey}`;
         }else{
-          const rt=tx>cx,sx=cx,ex=tx,mx=(sx+ex)/2;
+          const sx=cx,ex=tx,mx=(sx+ex)/2;
           a+=`M${cx} ${cy}V${cy-15}L${mx} ${cy-15}L${mx} ${tY}L${ex} ${tY}`;
         }
       });
@@ -501,28 +516,34 @@ function addFrP(t,cat,afterId,side){
   const relOpts=[['sib','أخ/أخت'],['wife','زوجة'],['husband','زوج'],['mother','أم'],['father','أب'],['other','أخرى']];
   const F=[
     {k:'n',l:'الاسم',t:'text',v:''},
-    {k:'g',l:'الجنس',o:[['m','ذكر'],['f','أنثى']],v:'m'},
+    {k:'g',l:'الجنس',o:[['m','ذكر'],['f','أنثى']],v:side?'f':'m'},
     {k:'rel',l:'نوع العلاقة'+(side?(side=='L'?' (يسار)':' (يمين)'):''),o:relOpts,v:'sib',h:v=>!afterId},
-    {k:'catsel',l:'الفئة (إلزامية)',t:'sel',o:catOpts,v:cat||cats[0]||'__new__'},
-    {k:'newcat',l:'اسم الفئة الجديدة',t:'text',v:'',h:v=>v.catsel!='__new__'},
+    {k:'catsel',l:'الفئة (إلزامية)',t:'sel',o:catOpts,v:cat||cats[0]||'__new__',h:v=>!!afterId},
+    {k:'newcat',l:'اسم الفئة الجديدة',t:'text',v:'',h:v=>!!afterId||v.catsel!='__new__'},
     {k:'d',l:'الحالة',o:[['0','حي'],['1','متوفى']],v:'0'},
     {k:'pr',l:'الأولوية',o:[['1','🔴'],['2','🟡'],['3','🟢']],v:'1',h:v=>v.d=='1'},
     {k:'st',l:'الحضور',o:[['y','✔'],['n','✖'],['','—']],v:'y',h:v=>v.d=='1'}
   ];
-  dlg('إضافة صديق'+(cat?' إلى «'+esc(cat)+'»':''),F,v=>{
+  dlg('إضافة '+(afterId?'قريب مربوط ('+(side=='L'?'يسار':'يمين')+')':'صديق'+(cat?' إلى «'+esc(cat)+'»':'')),F,v=>{
     snap();
-    let c=v.catsel;
+    // القريب يأخذ فئة الصديق الأصلي دائماً
+    const a0=afterId&&t.persons[afterId];
+    const rootId=a0?(a0.of&&t.persons[a0.of]?a0.of:afterId):null;
+    const host=rootId?t.persons[rootId]:null;
+    let c=host?host.cat:v.catsel;
     if(c=='__new__')c=(v.newcat||'').trim();
     if(!c){alert('الفئة إلزامية');return}
     if(!t.cats)t.cats=[];if(!t.cats.includes(c))t.cats.push(c);
-    const n={id:uid(),j:0,links:[],L:[],R:[],cat:c,of:afterId||null};ap(n,v);
+    const n={id:uid(),j:0,links:[],L:[],R:[],cat:c,of:rootId||null};ap(n,v);
     if(v.rel=='mother'||v.rel=='wife')n.g='f';
     if(v.rel=='father'||v.rel=='husband')n.g='m';
+    if(!n.of)delete n.of;
     t.persons[n.id]=n;
-    if(afterId&&t.persons[afterId]){
-      const host=t.persons[afterId];
-      if(side=='L'){(host.L=host.L||[]).push(n.id)}
-      else if(side=='R'){(host.R=host.R||[]).push(n.id)}
+    if(host){
+      // الإضافة دائماً مربوطة بالصديق الأصلي: من الصديق نفسه = الأقرب، ومن قريب = بعده إلى الخارج
+      const lst=side=='L'?(host.L=host.L||[]):(host.R=host.R||[]);
+      const i=a0.of?lst.indexOf(afterId)+1:0;
+      lst.splice(i,0,n.id);
       n.j=1;
     }
     sel=null;ch()
@@ -649,7 +670,7 @@ function parseQuick(txt){const R={F:null,M:null,sib:[],sp:[],kids:[]},ppl=[],fr=
   if(R.sp.length)R.sp.forEach((s,i)=>un.push({p:'me',s:s,kids:i?[]:R.kids}));else if(R.kids.length)un.push({p:'me',s:null,kids:R.kids})}
  return{people:ppl,unions:un,friends:fr}}
 function addFriends(ft,list){let first=null;list.forEach(o=>{const f={id:uid(),j:0,links:[],n:o.n,g:o.g,d:o.d,pr:o.d?0:o.pr,st:o.d?undefined:(o.st||'y'),sk:false,cat:o.cat||'أصدقاء',L:[],R:[]};ft.persons[f.id]=f;if(!ft.cats.includes(f.cat))ft.cats.push(f.cat);first=first||f.id;
-  o.rel.forEach((r,i)=>{const q={id:uid(),j:0,links:[],n:r.n,g:r.g,d:r.d,pr:r.d?0:r.pr,st:r.d?undefined:(r.st||'y'),sk:false,cat:r.cat||'أصدقاء',of:f.id,L:[],R:[]};ft.persons[q.id]=q;if(!ft.cats.includes(q.cat))ft.cats.push(q.cat);f[i%2?'L':'R'].push(q.id)})});return first}
+  o.rel.forEach((r,i)=>{const q={id:uid(),j:0,links:[],n:r.n,g:r.g,d:r.d,pr:r.d?0:r.pr,st:r.d?undefined:(r.st||'y'),sk:false,cat:f.cat,of:f.id,L:[],R:[]};ft.persons[q.id]=q;f[i%2?'L':'R'].push(q.id)})});return first}
 function aiApply(t,me,D){const map={me:me.id},made=[];
  (D.people||[]).forEach(q=>{if(!q||!q.id||q.id=='me')return;const n={id:uid(),j:0,links:[],n:String(q.n||'؟').trim(),g:q.g=='f'?'f':'m',d:q.d?1:0,pr:q.d?0:([1,2,3].includes(+q.pr)?+q.pr:1),st:q.d?undefined:(q.st||'y'),sk:false};map[q.id]=n.id;t.persons[n.id]=n;made.push(n.id)});
  if(t.ty=='fr'){made.forEach(id=>{const n=t.persons[id];n.cat='أصدقاء';if(!t.cats.includes('أصدقاء'))t.cats.push('أصدقاء')});if(D.friends&&D.friends.length)addFriends(t,D.friends);return}
@@ -814,6 +835,11 @@ $('#wbList').onclick=e=>{
     const others=orderedBoards().filter(b=>b.id!=cur.id).slice(1);   // احذف الحالية والثانية
     side.innerHTML=others.map(b=>`<button data-bid="${b.id}">${esc(b.name||'(بدون اسم)')}</button>`).join('');
     side.style.display='flex';
+    // ابدأ من نفس سطر زر "أخرى"، واللوحات طوليًا تحت بعضها
+    const r=other.getBoundingClientRect();
+    side.style.left=(r.right+10)+'px';
+    side.style.top=r.top+'px';
+    side.style.maxHeight=Math.max(80,window.innerHeight-r.top-12)+'px';
     return;
   }
   const b=e.target.closest('button[data-bid]');
