@@ -30,7 +30,6 @@ button{font:inherit;cursor:pointer;color:inherit}
 #ts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--ink);border:2px solid var(--ln);border-radius:10px;padding:6px 14px;display:none;z-index:60}
 .pl{position:absolute;width:20px;height:20px;line-height:16px;text-align:center;background:#fff;color:#222;border:2px solid #555;border-radius:50%;font-size:15px;display:none;z-index:5;text-decoration:none}
 .p:hover .pl,.p.sel .pl{display:block}.p:hover,.p.sel{z-index:9}
-/* الأزرار العلوية/السفلية خارج المستطيل تماماً */
 .pl.pt{top:-28px;left:50%;transform:translateX(-50%)}
 .pl.b{bottom:-28px;left:50%;transform:translateX(-50%)}
 .pl.l{left:-24px;top:15px}
@@ -74,13 +73,18 @@ button{font:inherit;cursor:pointer;color:inherit}
 .tcnt .m{color:#4a90d9}.tcnt .f{color:#e0568f}.tcnt .dl{color:#888}
 #wb{position:fixed;left:8px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px;font-size:12px;width:130px;z-index:20}
 #wb .lbl{font-weight:600;font-size:13px;color:var(--ink);opacity:.85;margin-bottom:2px;text-align:center}
-#wbList{display:flex;flex-direction:column;gap:3px;max-height:170px;overflow:auto;border:1px dashed var(--ln);border-radius:6px;padding:4px}
+#wbList{display:flex;flex-direction:column;gap:3px}
 #wbList button{width:100%;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:3px 6px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #wbList button.cur{background:#ffd95a;color:#222;font-weight:600}
 #wbList button:hover{background:#ffd95a;color:#222}
+#wbList button.wbOther{background:#e8e8e8}
 #wb .row{display:flex;flex-direction:column;gap:4px}
 #wb .row button{width:100%;background:var(--bg);border:2px solid var(--ln);border-radius:6px;padding:5px 6px;font-size:11px;text-align:center}
 #wb .row button:hover{background:#ffd95a;color:#222}
+/* قائمة "أخرى" الجانبية */
+#wbSide{position:fixed;left:150px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:none;flex-direction:column;gap:4px;background:var(--card);border:2px solid var(--ln);border-radius:10px;padding:8px;font-size:12px;width:180px;max-height:60vh;overflow:auto;z-index:25}
+#wbSide button{width:100%;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:4px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#wbSide button:hover{background:#ffd95a;color:#222}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><filter id="wbf"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter></svg>
 <div id="bd"><div id="cv"><svg id="lk" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none" fill="none" stroke="currentColor" stroke-width="2"></svg><div id="tr"></div></div></div>
@@ -108,6 +112,7 @@ button{font:inherit;cursor:pointer;color:inherit}
     <button id="wbLink">🔗 نسخ الرابط</button>
   </div>
 </div>
+<div id="wbSide"></div>
 
 <div id="ov"><div id="dl"></div></div>
 <script>
@@ -115,6 +120,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 const $=s=>document.querySelector(s),W=130,H=56,G=26,V=86;
 let MSON=false,S=null,TW={},KO={},POS={},OX={},TH={},memo,sel=null,drag=null;
 let UNDO=[],UNDO_LOCK=false;
+let LAST_SAVED_SNAP='';   // للكشف عن تعديل اللوحة
 
 const uid=()=>Math.random().toString(36).slice(2,9);
 const LS_KEY='mz2',LS_OLD='mz',LS_BAK='mz_backup';
@@ -131,12 +137,17 @@ function migrateTree(t){
 }
 function migrate(){
   let raw=null;try{raw=JSON.parse(localStorage.getItem(LS_KEY)||'null')}catch(e){}
-  if(raw&&raw.boards&&Array.isArray(raw.boards)&&raw.boards.length){raw.boards.forEach(b=>{(b.trees||[]).forEach(migrateTree)});return raw}
+  if(raw&&raw.boards&&Array.isArray(raw.boards)&&raw.boards.length){
+    raw.boards.forEach(b=>{(b.trees||[]).forEach(migrateTree)});
+    // ترتيب حسب lastOpened
+    raw.boards.forEach(b=>{if(!b.lastOpened)b.lastOpened=b.savedAt||Date.now()});
+    return raw;
+  }
   let old=null;try{old=JSON.parse(localStorage.getItem(LS_OLD)||'null')}catch(e){}
   if(old)try{localStorage.setItem(LS_BAK,JSON.stringify(old))}catch(e){}
   const trees=(old&&old.trees)||[];
   trees.forEach(migrateTree);
-  const b={id:uid(),name:'',trees:trees,v:(old&&old.v)||{x:40,y:70,k:1},savedAt:Date.now()};
+  const b={id:uid(),name:'',trees:trees,v:(old&&old.v)||{x:40,y:70,k:1},savedAt:Date.now(),lastOpened:Date.now()};
   return {boards:[b],current:b.id};
 }
 S=migrate();
@@ -193,6 +204,7 @@ function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
  const mAlive=m-noM,fAlive=f-noF;
  return`<div class="tcnt">عداد<span class="pop"><b>العدد الكلي</b><br><span class="m">ذكور: ${m}</span> · <span class="f">إناث: ${f}</span><br><b>بعد خصم الاعتذار</b><br><span class="m">ذكور: ${mAlive}</span> · <span class="f">إناث: ${fAlive}</span><br><span class="dl">معتذر: ${noM+noF}</span>${dm+df?`<br><span class="dl">متوفى: ${dm+df}</span>`:''}</span></div>`}
 
+/* ============ بناء صفوف شجرة الأصدقاء ============ */
 function buildRowsFr(t,ids){
   const set=new Set(ids);
   const isChild=new Set();
@@ -269,8 +281,7 @@ function render(){
       const cGap = 22;
       const catTail = 48;
 
-      // الحد الأدنى لعرض المحتوى (لضمان توسيط صديق واحد)
-      const minContentW = W*2 + gapCols;  // 276
+      const minContentW = W*2 + gapCols;
 
       const catData=catsArr.map(c=>{
         const ids=byCat[c]||[];
@@ -279,18 +290,19 @@ function render(){
         const contentW = Math.max(minContentW, maxRowLen*W + (maxRowLen-1)*gapCols);
         return {c,rows,contentW};
       });
+      // maxContentW: أوسع فئة في الشجرة كاملة → كل الصفوف تُوسّط بالنسبة له
       const maxContentW = Math.max(...catData.map(x=>x.contentW), minContentW);
       const CW = maxContentW + gapCatFriend*2;
 
       let cy=padTop+10;
       catData.forEach(cd=>{
-        const {c,rows,contentW}=cd;
+        const {c,rows}=cd;
         const chh=headPad + rows.length*rowH + catTail;
 
         rows.forEach((row,ri)=>{
           const rowW = row.length*W + (row.length-1)*gapCols;
-          // توسيط الصف داخل contentW
-          const rowLeft = (contentW - rowW)/2;
+          // توسيط الصف بالنسبة لـ maxContentW (عرض موحّد لكل الفئات)
+          const rowLeft = (maxContentW - rowW)/2;
           row.forEach((id,ci)=>{
             const xFromLeft = gapCatFriend + rowLeft + W/2 + ci*(W+gapCols);
             const y = cy + headPad + ri*rowH;
@@ -363,46 +375,45 @@ function links(){
     Object.keys(POS[t.id]||{}).forEach(id=>{
       const p=t.persons[id];if(!p)return;
       const ln=linksOf(p);if(!ln.length)return;
-      // كل الخطوط تخرج من منتصف الفرد، وتتفرّع بعد خروجها
       const q=POS[t.id][id];if(!q)return;
-      const baseX = t.ty=='fr' ? t.x+q.x+24 : t.x+q.x+OX[t.id]+W/2;
-      const baseY = t.y+q.y+(t.ty=='fr'?H/2:58+42+H/2);  // منتصف الفرد عمودياً
+      // للشجرة العائلية: نقطة الخروج من منتصف الحافة العلوية للفرد
+      // لشجرة الأصدقاء: نقطة الخروج من منتصف الحافة اليمنى
+      const isFr = t.ty=='fr';
+      const baseX = isFr ? t.x+q.x+24+W/2 : t.x+q.x+OX[t.id]+W/2;
+      const baseY = isFr ? t.y+q.y+H/2     : t.y+q.y+58+42;   // في شجرة العائلة: أعلى المستطيل
       const total=ln.length;
       ln.forEach((l,idx)=>{
         const c=boardTrees().find(x=>x.id==l.br);if(!c||c.hid)return;
         let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];if(!bp)return;
-        const off = (idx-(total-1)/2)*10;   // تفرّع متناظر حول المنتصف
-        const cx=baseX;
-        const ty=baseY+off;
-        // نقطة الخروج الموحّدة: نفس نقطة الفرد
-        // نرسم: من الفرد -> نقطة تفريع (بعد 15px) -> المسار
-        const splitX = baseX + (t.ty=='fr' ? -15 : 15);   // خروج بسيط
-        // للتبسيط نستخدم منحنى من نقطة الفرد إلى نقطة الهدف مع إزاحة
+        // إزاحة أفقية على الحافة العلوية
+        const off = (idx-(total-1)/2)*12;
+        const cx = baseX + off;
+        const cy = baseY;
         if(c.ty=='fr'){
           const treeL=c.x, treeR=c.x+(TW[c.id]||200), treeT=c.y, treeB=c.y+(TH[c.id]||200);
           const treeCx=c.x+(TW[c.id]||200)/2, treeCy=c.y+(TH[c.id]||200)/2;
           let ex,ey;
-          const dx=treeCx-cx, dy=treeCy-ty;
+          const dx=treeCx-cx, dy=treeCy-cy;
           if(Math.abs(dx)>Math.abs(dy)){
             ex = dx>0 ? treeL : treeR;
-            ey = Math.max(treeT+10, Math.min(treeB-10, ty));
+            ey = Math.max(treeT+10, Math.min(treeB-10, cy));
           } else {
             ex = Math.max(treeL+10, Math.min(treeR-10, cx));
             ey = dy>0 ? treeT : treeB;
           }
-          // منحنى من نقطة الفرد، مع تفرّع طفيف عند الخروج
-          b+=`M${cx} ${baseY}L${splitX} ${baseY}Q${splitX} ${ey} ${ex} ${ey}`;
+          // خروج لأعلى 15px ثم انحناء
+          b+=`M${cx} ${cy}V${cy-15}Q${cx} ${ey} ${ex} ${ey}`;
           return;
         }
         const tx=c.x+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].x+OX[c.id]+W/2:0);
-        const tY=c.y+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].y+58+42+H/2:0);
+        const tY=c.y+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].y+58+42:0);
         if(l.rel=='p'){
           const cu=c.unions.find(u=>u.s&&(u.p==bp||u.s==bp)&&POS[c.id][u.p]&&POS[c.id][u.s]);
           let ex=tx,ey=tY+H;if(cu){ex=c.x+OX[c.id]+(POS[c.id][cu.p].x+POS[c.id][cu.s].x)/2;ey=tY+H/2}
-          a+=`M${cx} ${baseY}L${splitX} ${baseY}L${splitX} ${ty}L${ex} ${ty}L${ex} ${ey}`;
+          a+=`M${cx} ${cy}V${cy-15}L${cx} ${ey+20}L${ex} ${ey+20}V${ey}`;
         }else{
-          const rt=tx>cx,sx=cx+(rt?1:-1)*W/2,ex=tx-(rt?1:-1)*W/2,mx=(sx+ex)/2;
-          a+=`M${cx} ${baseY}L${splitX} ${baseY}L${splitX} ${tY}H${ex}`;
+          const rt=tx>cx,sx=cx,ex=tx,mx=(sx+ex)/2;
+          a+=`M${cx} ${cy}V${cy-15}L${mx} ${cy-15}L${mx} ${tY}L${ex} ${tY}`;
         }
       });
     });
@@ -483,6 +494,7 @@ function addFamP(t,id,a){
     sel=null;ch()
   })
 }
+/* ============ إضافة صديق لشجرة الأصدقاء ============ */
 function addFrP(t,cat,afterId,side){
   const cats=(t.cats||[]).slice();
   const catOpts=cats.map(c=>[c,c]).concat([['__new__','＋ فئة جديدة']]);
@@ -490,7 +502,7 @@ function addFrP(t,cat,afterId,side){
   const F=[
     {k:'n',l:'الاسم',t:'text',v:''},
     {k:'g',l:'الجنس',o:[['m','ذكر'],['f','أنثى']],v:'m'},
-    {k:'rel',l:'نوع العلاقة',o:relOpts,v:'sib',h:v=>!afterId},
+    {k:'rel',l:'نوع العلاقة'+(side?(side=='L'?' (يسار)':' (يمين)'):''),o:relOpts,v:'sib',h:v=>!afterId},
     {k:'catsel',l:'الفئة (إلزامية)',t:'sel',o:catOpts,v:cat||cats[0]||'__new__'},
     {k:'newcat',l:'اسم الفئة الجديدة',t:'text',v:'',h:v=>v.catsel!='__new__'},
     {k:'d',l:'الحالة',o:[['0','حي'],['1','متوفى']],v:'0'},
@@ -508,9 +520,10 @@ function addFrP(t,cat,afterId,side){
     if(v.rel=='father'||v.rel=='husband')n.g='m';
     t.persons[n.id]=n;
     if(afterId&&t.persons[afterId]){
-      if(side=='L'){(t.persons[afterId].L=t.persons[afterId].L||[]).push(n.id)}
-      else if(side=='R'){(t.persons[afterId].R=t.persons[afterId].R||[]).push(n.id)}
-      n.j=1
+      const host=t.persons[afterId];
+      if(side=='L'){(host.L=host.L||[]).push(n.id)}
+      else if(side=='R'){(host.R=host.R||[]).push(n.id)}
+      n.j=1;
     }
     sel=null;ch()
   });
@@ -734,28 +747,101 @@ $('#nt').onclick=()=>{
 };
 $('#bk').onclick=()=>dlg('نسخ احتياطي',[{k:'js',l:'انسخ النص للاحتفاظ به:',t:'area',v:JSON.stringify(S)}],v=>{try{const n=JSON.parse(v.js);snap();
   if(Array.isArray(n.boards))S=n;
-  else if(Array.isArray(n.trees)){n.trees.forEach(migrateTree);const b={id:uid(),name:'مستورد',trees:n.trees,v:n.v||{x:40,y:70,k:1},savedAt:Date.now()};S.boards.push(b);S.current=b.id}
+  else if(Array.isArray(n.trees)){n.trees.forEach(migrateTree);const b={id:uid(),name:'مستورد',trees:n.trees,v:n.v||{x:40,y:70,k:1},savedAt:Date.now(),lastOpened:Date.now()};S.boards.push(b);S.current=b.id}
   else throw 0;
   tf();ch()}catch(x){dlg('نص غير صالح',[],()=>{},null,'حسناً')}},null,'استيراد');
 
-function renderWbName(){const el=$('#wbName');const b=curBoard();el.textContent=b&&b.name?b.name:'—'}
-function renderWbList(){const box=$('#wbList');box.innerHTML=S.boards.map(b=>'<button data-bid="'+b.id+'" class="'+(b.id==S.current?'cur':'')+'">'+esc(b.name||'(بدون اسم)')+'</button>').join('')}
-function switchTo(bid){if(bid==S.current)return;
-  $('#dl').innerHTML='<h3>الانتقال إلى مناسبة أخرى</h3><p style="margin:6px 0;font-size:13px">حفظ «<b>'+esc(curBoard().name||'')+'</b>» قبل الانتقال؟</p><div class="bt"><button id="ok">حفظ وخروج</button><button id="cx">إلغاء</button></div>';
-  $('#ov').style.display='flex';
-  $('#ok').onclick=()=>{$('#ov').style.display='none';save();S.current=bid;save();MS.clear();sel=null;tf();render()};
-  $('#cx').onclick=()=>{$('#ov').style.display='none'};
+/* ============ إدارة المناسبات ============ */
+function orderedBoards(){
+  // ترتيب حسب lastOpened (الأحدث أولاً)
+  return S.boards.slice().sort((a,b)=>(b.lastOpened||0)-(a.lastOpened||0));
 }
-$('#wbList').onclick=e=>{const b=e.target.closest('button[data-bid]');if(!b)return;if(b.dataset.bid==S.current)return;switchTo(b.dataset.bid)};
-$('#wbName').onclick=()=>{const b=curBoard();dlg('اسم المناسبة',[{k:'n',l:'الاسم',t:'text',v:b.name||''}],v=>{snap();b.name=(v.n||'').trim()||b.name||'بدون اسم';save();renderWbName();renderWbList()})};
+function renderWbName(){const el=$('#wbName');const b=curBoard();el.textContent=b&&b.name?b.name:'—'}
+function renderWbList(){
+  const box=$('#wbList');
+  const ordered=orderedBoards();
+  const cur=curBoard();
+  // الحالية أولاً دائماً
+  const first=cur;
+  // الثانية: أعلى lastOpened بعد الحالية (لو كان هناك > 1)
+  const rest=ordered.filter(b=>b.id!=cur.id);
+  const second=rest[0];
+  const others=rest.slice(1);
+  let h='';
+  if(first){
+    h+=`<button data-bid="${first.id}" class="cur">${esc(first.name||'(بدون اسم)')}</button>`;
+  }
+  if(second){
+    h+=`<button data-bid="${second.id}">${esc(second.name||'(بدون اسم)')}</button>`;
+  }
+  if(others.length>0){
+    h+=`<button id="wbOtherBtn" class="wbOther">أخرى ▸ (${others.length})</button>`;
+  }
+  box.innerHTML=h;
+  // إخفاء القائمة الجانبية عند إعادة الرسم
+  const side=$('#wbSide');side.style.display='none';side.innerHTML='';
+}
+function switchTo(bid){
+  if(bid==S.current)return;
+  const b=curBoard();
+  const hasChange=JSON.stringify(b)!==LAST_SAVED_SNAP;
+  if(hasChange){
+    $('#dl').innerHTML='<h3>الانتقال إلى مناسبة أخرى</h3><p style="margin:6px 0;font-size:13px">حفظ «<b>'+esc(b.name||'')+'</b>» قبل الانتقال؟</p><div class="bt"><button id="ok">حفظ وخروج</button><button id="cx">إلغاء</button></div>';
+    $('#ov').style.display='flex';
+    $('#ok').onclick=()=>{$('#ov').style.display='none';doSwitch(bid)};
+    $('#cx').onclick=()=>{$('#ov').style.display='none'};
+  }else{
+    doSwitch(bid);
+  }
+}
+function doSwitch(bid){
+  const b=curBoard();
+  if(b){b.savedAt=Date.now()}
+  save();
+  S.current=bid;
+  const nb=curBoard();
+  if(nb){nb.lastOpened=Date.now()}
+  save();
+  LAST_SAVED_SNAP=JSON.stringify(nb);
+  MS.clear();sel=null;tf();render();
+}
+$('#wbList').onclick=e=>{
+  const other=e.target.closest('#wbOtherBtn');
+  if(other){
+    const side=$('#wbSide');
+    if(side.style.display==='flex'){side.style.display='none';return}
+    const cur=curBoard();
+    const others=orderedBoards().filter(b=>b.id!=cur.id).slice(1);   // احذف الحالية والثانية
+    side.innerHTML=others.map(b=>`<button data-bid="${b.id}">${esc(b.name||'(بدون اسم)')}</button>`).join('');
+    side.style.display='flex';
+    return;
+  }
+  const b=e.target.closest('button[data-bid]');
+  if(!b)return;
+  if(b.dataset.bid==S.current)return;
+  switchTo(b.dataset.bid);
+};
+$('#wbSide').onclick=e=>{
+  const b=e.target.closest('button[data-bid]');if(!b)return;
+  const side=$('#wbSide');side.style.display='none';
+  const b2=curBoard();
+  const hasChange=JSON.stringify(b2)!==LAST_SAVED_SNAP;
+  if(hasChange){switchTo(b.dataset.bid)}else{doSwitch(b.dataset.bid)}
+};
+$('#wbName').onclick=()=>{const b=curBoard();dlg('اسم المناسبة',[{k:'n',l:'الاسم',t:'text',v:b.name||''}],v=>{snap();b.name=(v.n||'').trim()||b.name||'بدون اسم';b.savedAt=Date.now();save();renderWbName();renderWbList()})};
 $('#wbNew').onclick=()=>{dlg('مناسبة جديدة',[{k:'n',l:'اسم المناسبة',t:'text',v:'مناسبة '+(S.boards.length+1)}],v=>{const nm=(v.n||'').trim()||('مناسبة '+(S.boards.length+1));
-  save();const nb={id:uid(),name:nm,trees:[],v:{x:40,y:70,k:1},savedAt:Date.now()};S.boards.push(nb);S.current=nb.id;save();MS.clear();sel=null;tf();render()})};
+  const b=curBoard();if(b)b.savedAt=Date.now();save();
+  const nb={id:uid(),name:nm,trees:[],v:{x:40,y:70,k:1},savedAt:Date.now(),lastOpened:Date.now()};S.boards.push(nb);S.current=nb.id;save();
+  LAST_SAVED_SNAP=JSON.stringify(nb);
+  MS.clear();sel=null;tf();render()})};
 $('#wbDup').onclick=()=>{const src=curBoard();const base=(src.name||'مناسبة').replace(/\s*\(\d+\)\s*$/,'');let n=1;while(S.boards.some(b=>b.name==(base+' ('+n+')')))n++;
-  save();const copy=JSON.parse(JSON.stringify(src));copy.id=uid();copy.name=base+' ('+n+')';copy.savedAt=Date.now();
-  S.boards.push(copy);S.current=copy.id;save();MS.clear();sel=null;tf();render();const ts=$('#ts');ts.textContent='✔ تم إنشاء نسخة: '+copy.name;ts.style.display='block';setTimeout(()=>ts.style.display='none',1800)};
-$('#wbSave').onclick=()=>{const b=curBoard();b.savedAt=Date.now();save();const ts=$('#ts');ts.textContent='✔ تم حفظ «'+(b.name||'')+'»';ts.style.display='block';setTimeout(()=>ts.style.display='none',1500)};
+  save();const copy=JSON.parse(JSON.stringify(src));copy.id=uid();copy.name=base+' ('+n+')';copy.savedAt=Date.now();copy.lastOpened=Date.now();
+  S.boards.push(copy);S.current=copy.id;save();
+  LAST_SAVED_SNAP=JSON.stringify(copy);
+  MS.clear();sel=null;tf();render();const ts=$('#ts');ts.textContent='✔ تم إنشاء نسخة: '+copy.name;ts.style.display='block';setTimeout(()=>ts.style.display='none',1800)};
+$('#wbSave').onclick=()=>{const b=curBoard();b.savedAt=Date.now();b.lastOpened=Date.now();save();LAST_SAVED_SNAP=JSON.stringify(b);const ts=$('#ts');ts.textContent='✔ تم حفظ «'+(b.name||'')+'»';ts.style.display='block';setTimeout(()=>ts.style.display='none',1500)};
 $('#wbDel').onclick=()=>{const b=curBoard();if(S.boards.length<=1){dlg('لا يمكن الحذف',[{k:'m',l:'يجب أن تبقى مناسبة واحدة على الأقل.',t:'text',v:''}],()=>{},null,'حسناً');return}
-  dlg('حذف «'+esc(b.name||'')+'»؟',[],()=>{snap();S.boards=S.boards.filter(x=>x.id!=b.id);S.current=S.boards[0].id;save();MS.clear();sel=null;tf();render()},null,'نعم، احذف')};
+  dlg('حذف «'+esc(b.name||'')+'»؟',[],()=>{snap();S.boards=S.boards.filter(x=>x.id!=b.id);S.current=S.boards[0].id;S.boards[0].lastOpened=Date.now();save();LAST_SAVED_SNAP=JSON.stringify(curBoard());MS.clear();sel=null;tf();render()},null,'نعم، احذف')};
 $('#wbLink').onclick=async()=>{
  try{
   const b=curBoard();
@@ -786,7 +872,7 @@ $('#wbLink').onclick=async()=>{
     json=await new Response(stream).text();
    }else{b64=b64.slice(4);json=decodeURIComponent(escape(atob(b64)))}
    const n=JSON.parse(json);
-   if(Array.isArray(n.boards)){snap();S=n;tf();ch();const ts=$('#ts');ts.textContent='✔ تم التحميل من الرابط';ts.style.display='block';setTimeout(()=>ts.style.display='none',2500);history.replaceState(null,'',location.pathname)}
+   if(Array.isArray(n.boards)){snap();S=n;S.boards.forEach(b=>{if(!b.lastOpened)b.lastOpened=b.savedAt||Date.now()});tf();ch();const ts=$('#ts');ts.textContent='✔ تم التحميل من الرابط';ts.style.display='block';setTimeout(()=>ts.style.display='none',2500);history.replaceState(null,'',location.pathname)}
   }catch(e){console.warn('رابط غير صالح',e)}
  }
 })();
@@ -794,11 +880,13 @@ $('#wbLink').onclick=async()=>{
 function boot(){
   const b=curBoard();
   if(!b)return;
+  if(!b.lastOpened)b.lastOpened=Date.now();
+  LAST_SAVED_SNAP=JSON.stringify(b);
   if(!b.name){
     setTimeout(()=>{
       $('#dl').innerHTML='<h3>مرحباً! ما اسم هذه المناسبة؟</h3><label>اسم المناسبة</label><input type="text" id="bn" value=""><div class="bt"><button id="ok">ابدأ</button></div>';
       $('#ov').style.display='flex';
-      $('#ok').onclick=()=>{const nm=($('#bn').value||'').trim()||'لوحتي';b.name=nm;save();$('#ov').style.display='none';renderWbName();renderWbList()};
+      $('#ok').onclick=()=>{const nm=($('#bn').value||'').trim()||'لوحتي';b.name=nm;b.lastOpened=Date.now();save();$('#ov').style.display='none';renderWbName();renderWbList();LAST_SAVED_SNAP=JSON.stringify(b)};
       const inp=$('#bn');if(inp)setTimeout(()=>inp.focus(),100);
     },50);
   }
