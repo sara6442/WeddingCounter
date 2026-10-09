@@ -44,14 +44,27 @@ button{font:inherit;cursor:pointer;color:inherit}
 .ch{display:flex;gap:5px;flex-wrap:wrap}.ch button,.bt button{background:var(--bg);border:2px solid var(--ln);border-radius:8px;padding:3px 10px}.ch .on,#ok{background:#ffd95a!important;color:#222}
 .bt{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.rd{color:#c33}
 .pc{position:absolute;right:4px;top:1px;font-size:9px;opacity:.7;background:#fff;color:#222;padding:0 3px;border-radius:4px}
-/* عدّاد زاوية الشجرة */
-.tcnt{position:absolute;left:-2px;bottom:-2px;background:var(--card);border:2px solid var(--ln);border-radius:8px 4px 9px 5px;padding:3px 8px;font-size:11px;line-height:1.4;direction:rtl;z-index:4;pointer-events:none}
-.tcnt b{font-weight:600}.tcnt .m{color:#4a90d9}.tcnt .f{color:#e0568f}.tcnt .dead{color:#888}
+/* عدّاد منتصف الشجرة العلوي مع hover */
+.tcnt{position:absolute;left:50%;top:4px;transform:translateX(-50%);background:var(--card);border:2px solid var(--ln);border-radius:8px 4px 9px 5px;padding:3px 14px;font-size:12px;font-weight:600;direction:rtl;z-index:5;cursor:help}
+.tcnt .pop{display:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:6px;background:var(--card);border:2px solid var(--ln);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:400;line-height:1.7;min-width:180px;text-align:right;white-space:nowrap;box-shadow:0 2px 10px #0003;z-index:10}
+.tcnt:hover .pop{display:block}
+.tcnt .pop b{font-weight:600}
+.tcnt .m{color:#4a90d9}.tcnt .f{color:#e0568f}.tcnt .dl{color:#888}
+/* لوحة الحفظ أسفل العدّاد الأيسر */
+#wb{position:fixed;left:8px;top:calc(290px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:4px;background:var(--card);border:2px solid var(--ln);border-radius:10px;padding:6px;font-size:12px;width:130px;z-index:20}
+#wb button{width:100%;background:var(--bg);border:2px solid var(--ln);border-radius:6px;padding:4px 6px;font-size:12px;text-align:center}
+#wb button:hover{background:#ffd95a;color:#222}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><filter id="wb"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter></svg>
 <div id="bd"><div id="cv"><svg id="lk" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none" fill="none" stroke="currentColor" stroke-width="2"></svg><div id="tr"></div></div></div>
 <div id="top"><h1>✏️ عدّاد المعازيم</h1><button class="tb" id="nf">🌳 شجرة عائلة</button><button class="tb" id="nr">🧑‍🤝‍🧑 شجرة أصدقاء</button><button class="tb" id="bk">💾 نسخ احتياطي</button><button class="tb" id="ms">☑ تحديد</button><button class="tb" id="un">↶ تراجع</button><button class="tb" id="re">↷ إعادة</button><button class="tb" id="zi">＋</button><button class="tb" id="zo">－</button><button class="tb" id="zr">⌂</button></div>
-<div id="cnt"></div><div id="ts"></div><div id="mb"></div><div id="ov"><div id="dl"></div></div>
+<div id="cnt"></div><div id="ts"></div><div id="mb"></div>
+<div id="wb">
+ <button id="wbsave">💾 حفظ اللوحة</button>
+ <button id="wbload">📂 استرداد اللوحة</button>
+ <button id="wblink">🔗 نسخ رابط مشترك</button>
+</div>
+<div id="ov"><div id="dl"></div></div>
 <script>
 const $=s=>document.querySelector(s),W=130,H=56,G=26,V=86;
 let MSON=false,S=null,TW={},KO={},POS={},OX={},TH={},memo,sel=null,drag=null;
@@ -89,8 +102,13 @@ function lay(t,id){if(memo[id])return memo[id];const B=memo[id]={it:[{i:id,x:0,r
  B.it=it;return B}
 const hsd=(t,id,s)=>t.unions.some(u=>u.p==id&&u.s&&u.side==s);
 function ph(t,id,x,y,pl){const p=t.persons[id];if(p.ph)return'';const cat=p.cat&&p.cat!='none'?`<i class="pc">${({work:'💼',study:'🎓',hood:'🏘️'})[p.cat]||''}</i>`:'';return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}${cat}<b>${esc(p.n)}</b>${p.sk?'<small>مذكور ↩</small>':''}<button data-a="ed">✎</button>${p.of?'':`<button data-a="br" class="${p.br?'on':''}" title="حلقة">${(c=>c&&c.ty=='fr'&&c.hid?'👁':'🌿')(p.br&&S.trees.find(x=>x.id==p.br))}</button>`}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${[...pl].map(k=>`<u class="pl ${k=='t'?'pt':k}" data-a="${k}">+</u>`).join('')}</div>`}
-// عدّاد داخل الشجرة
-function tcnt(t){let m=0,f=0,dm=0,df=0;Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}if(p.st=='n')return;p.g=='f'?f++:m++});return`<div class="tcnt"><b>عداد:</b> <span class="m">ذكور ${m}</span> · <span class="f">إناث ${f}</span>${dm+df?` · <span class="dead">متوفى ${dm+df}</span>`:''}</div>`}
+// عدّاد منتصف الشجرة العلوي مع hover
+function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
+ Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}
+  p.g=='f'?f++:m++; // العدد الكلي بدون المتوفى
+  if(p.st=='n'){p.g=='f'?noF++:noM++}});
+ const mAlive=m-noM,fAlive=f-noF;
+ return`<div class="tcnt">عداد<span class="pop"><b>العدد الكلي</b><br><span class="m">ذكور: ${m}</span> · <span class="f">إناث: ${f}</span><br><b>بعد خصم الاعتذار</b><br><span class="m">ذكور: ${mAlive}</span> · <span class="f">إناث: ${fAlive}</span><br><span class="dl">معتذر: ${noM+noF}</span>${dm+df?`<br><span class="dl">متوفى: ${dm+df}</span>`:''}</span></div>`}
 function render(){memo={};KO={};POS={};let h='';
  S.trees.forEach(t=>{if(t.hid&&t.ty!='fr')t.hid=0;if(t.hid)return;const fr=t.ty=='fr',pos={};let w,ox,m,my=0,d='',ps='';const em=!Object.keys(t.persons).length;
   if(em){w=230;ox=20;ps='<button class="big" data-a="first">＋</button>'}else if(fr){const L=Math.max(0,...t.order.map(i=>t.persons[i].L.length)),R=Math.max(0,...t.order.map(i=>t.persons[i].R.length));
@@ -104,14 +122,23 @@ function render(){memo={};KO={};POS={};let h='';
    const kk=u.kids.filter(k=>pos[k]);if(kk.length){const bus=y+H+V/2,xs=kk.map(X);const pp0=t.persons[u.p]||{};if(pp0.ph&&!pp0.br)y0=bus;d+=`M${mx} ${y0}V${bus}M${Math.min(mx,...xs)} ${bus}H${Math.max(mx,...xs)}`;kk.forEach(k=>d+=`M${X(k)} ${bus}V${Y(k)}`)}});
   Object.keys(pos).forEach(id=>{const p=t.persons[id];if(!p)return;my=Math.max(my,pos[id].y);
    ps+=ph(t,id,X(id),Y(id),fr?(p.of?'':'blr'):'tb'+(p.j||hsd(t,id,'L')?'':'l')+(p.j||hsd(t,id,'R')?'':'r'))});
-  const hh=em?190:my+H+58+26;TH[t.id]=hh;TW[t.id]=w;const lk=S.trees.some(x=>Object.values(x.persons).some(p=>p.br==t.id));
+  // مساحة إضافية أعلى الشجرة للعدّاد
+  const padTop=42,hh=(em?190:my+H+58+26)+padTop;
+  // إزاحة الرسم لأسفل بـ padTop
+  ps=ps.replace(/top:(\d+(\.\d+)?)px/g,(_,v)=>`top:${+v+padTop}px`);
+  d=''; // إعادة رسم الخطوط بإزاحة
+  if(fr)t.order.forEach(f=>{const p=t.persons[f],y=Y(f)+H/2+padTop;[p.L,p.R].forEach(a=>{let pv=f;a.forEach(r=>{const x1=X(pv),x2=X(r);d+=`M${Math.min(x1,x2)+W/2} ${y}H${Math.max(x1,x2)-W/2}`;pv=r})})});
+  else t.unions.forEach(u=>{if(!pos[u.p])return;const y=Y(u.p)+padTop;let mx=X(u.p),y0=y+H;
+   if(u.s&&pos[u.s]){const a=X(u.p),b=X(u.s);d+=`M${Math.min(a,b)+W/2} ${y+H/2}H${Math.max(a,b)-W/2}`;mx=(a+b)/2;y0=y+H/2}
+   const kk=u.kids.filter(k=>pos[k]);if(kk.length){const bus=y+H+V/2,xs=kk.map(X);const pp0=t.persons[u.p]||{};if(pp0.ph&&!pp0.br)y0=bus;d+=`M${mx} ${y0}V${bus}M${Math.min(mx,...xs)} ${bus}H${Math.max(mx,...xs)}`;kk.forEach(k=>d+=`M${X(k)} ${bus}V${Y(k)+padTop}`)}});
+  TH[t.id]=hh;TW[t.id]=w;const lk=S.trees.some(x=>Object.values(x.persons).some(p=>p.br==t.id));
   h+=`<div class="t" data-t="${t.id}" style="left:${t.x}px;top:${t.y}px;width:${w}px;height:${hh}px"><div class="th"><button class="mv" data-a="mv" title="تحريك الشجرة">✥</button><span>${fr?'🧑‍🤝‍🧑':'🌳'} ${esc(t.name)}</span><button data-a="tn" title="تعديل الاسم">✎</button>${lk&&fr?'<button data-a="hd" title="إخفاء">👁</button>':''}<button data-a="dup" title="نسخ الشجرة">⧉</button><button data-a="tx" title="حذف الشجرة">🗑</button></div><svg width="${w}" height="${hh}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wb)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${ps}${em?'':tcnt(t)}</div>`});
  $('#tr').innerHTML=h;links();cnt();msUi()}
 function msUi(){document.body.classList.toggle('ms',MSON);$('#ms').classList.toggle('on',MSON);const b=$('#mb');b.style.display=MSON?'flex':'none';
  if(MSON)b.innerHTML=`<b>${MS.size} محدد</b><button class="tb" data-m="y">✔ أكّد الحضور</button><button class="tb" data-m="n">✖ اعتذر</button><button class="tb" data-m="0">↺ بلا حالة</button><button class="tb" data-m="all">تحديد الكل</button><button class="tb" data-m="del">🗑 حذف</button><button class="tb" data-m="x">إنهاء</button>`}
 function links(){let a='',b='';S.trees.forEach(t=>{if(t.hid)return;Object.keys(POS[t.id]||{}).forEach(id=>{const p=t.persons[id],c=p&&p.br&&S.trees.find(x=>x.id==p.br);if(!c||c.hid||!POS[c.id])return;
  const bp=c.persons[p.bp]?p.bp:Object.keys(c.persons)[0],q=POS[t.id][id],r=POS[c.id][bp];if(!r)return;
- const cx=t.x+q.x+OX[t.id],ty=t.y+q.y+58,tx=c.x+r.x+OX[c.id],tY=c.y+r.y+58;
+ const cx=t.x+q.x+OX[t.id],ty=t.y+q.y+58+42,tx=c.x+r.x+OX[c.id],tY=c.y+r.y+58+42;
  if(c.ty=='fr'){b+=`M${cx} ${ty+H/2}Q${cx} ${tY+H/2} ${tx} ${tY+H/2}`;return}
  if(p.rel=='p'){const cu=c.unions.find(u=>u.s&&(u.p==bp||u.s==bp)&&POS[c.id][u.p]&&POS[c.id][u.s]);let ex=tx,ey=tY+H;if(cu){ex=c.x+OX[c.id]+(POS[c.id][cu.p].x+POS[c.id][cu.s].x)/2;ey=tY+H/2}
   a+=p.ph?`M${cx} ${ty+H}V${ty-V/2}H${ex}V${ey}`:`M${cx+16} ${ty}V${ty-V/2}H${ex}V${ey}`}
@@ -132,14 +159,12 @@ function dlg(title,F,ok,extra,lbl){const v={};let h=`<h3>${title}</h3>`;
  d.querySelectorAll('.ch button').forEach(b=>b.onclick=()=>{b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');v[b.parentNode.dataset.k]=b.dataset.v;sy()});
  d.querySelectorAll('input,textarea,select').forEach(i=>i.oninput=i.onchange=()=>{v[i.dataset.k]=i.type=='checkbox'?i.checked:i.value;sy()});
  sy();$('#cx').onclick=cl;$('#ok').onclick=()=>{const bad=F.filter(f=>f.req&&!(f.h&&f.h(v))&&!v[f.k]);if(bad.length){bad.forEach(f=>d.querySelector(`[data-f="${f.k}"]`).style.outline='2px solid #e5484d');return}cl();ok(v)};d.querySelectorAll('.ex').forEach(b=>b.onclick=()=>{cl();extra[b.dataset.i][1]()})}
-// الأولوية الافتراضية أحمر + الحضور الافتراضي مؤكد + خيار "بدون" أخير
 const pf=p=>[{k:'n',l:'الاسم',t:'text',v:p.n},{k:'g',l:'الجنس',o:[['m','ذكر'],['f','أنثى']],v:p.g},{k:'d',l:'الحالة',o:[['0','حي'],['1','متوفى']],v:p.d?'1':'0'},{k:'pr',l:'الأولوية',o:[['1','🔴 أحمر'],['2','🟡 أصفر'],['3','🟢 أخضر']],v:''+(p.pr||1),h:v=>v.d=='1'},{k:'st',l:'الحضور',o:[['y','✔ أكّد'],['n','✖ اعتذر'],['','بدون']],v:p.d?'':(p.st!==undefined?p.st:'y'),h:v=>v.d=='1'},{k:'cat',l:'الفئة (للأصدقاء)',o:[['none','بدون'],['work','💼 عمل'],['study','🎓 دراسة'],['hood','🏘️ حي']],v:p.cat||'none',h:v=>v.ty!='fr'},{k:'sk',l:'مذكور مسبقاً في عائلته (لا يُحسب)',t:'check',v:p.sk}];
 const ap=(p,v)=>{p.n=(v.n||'').trim()||'بدون اسم';p.g=v.g;p.d=+v.d;p.pr=+v.d?0:(+v.pr||1);p.sk=!!v.sk;if(v.cat&&v.cat!='none')p.cat=v.cat;else delete p.cat;
- // المتوفى: لا حالة حضور
  if(p.d)delete p.st;
  else if(v.st!==undefined&&v.st!=='')p.st=v.st;
  else if(v.st==='')delete p.st;
- else if(p.st===undefined)p.st='y'; // افتراضي مؤكد
+ else if(p.st===undefined)p.st='y';
 };
 const B=()=>({n:'',g:'m',d:0,pr:1,st:'y',sk:false});
 const nf=hd=>[{k:'ty',l:'نوع الشجرة',o:[['fam','🌳 شجرة عائلة'],['fr','🧑‍🤝‍🧑 شجرة أصدقاء']],v:'fam',h:hd},{k:'tn',l:'اسم الشجرة',t:'text',v:'',h:hd},...pf(B()).map(f=>({...f,h:f.h?v=>hd(v)||f.h(v):hd}))];
@@ -234,13 +259,9 @@ function addFriends(ft,list,afterId){let at=afterId?ft.order.indexOf(afterId)+1:
  list.forEach(o=>{const f={id:uid(),j:0,br:null,n:o.n,g:o.g,d:o.d,pr:o.d?0:o.pr,st:o.d?undefined:(o.st||'y'),sk:false,cat:o.cat,L:[],R:[]};ft.persons[f.id]=f;ft.order.splice(at++,0,f.id);first=first||f.id;
   o.rel.forEach((r,i)=>{const q={id:uid(),j:0,br:null,n:r.n,g:r.g,d:r.d,pr:r.d?0:r.pr,st:r.d?undefined:(r.st||'y'),sk:false,cat:r.cat,of:f.id};ft.persons[q.id]=q;f[i%2?'L':'R'].push(q.id)})});return first}
 async function aiDlg(t,me){if(me.ph)return;const sm=window.claude&&window.claude.use?await window.claude.use('sample'):null;
- dlg('✨ إضافة أفراد حول «'+esc(me.n)+'» بالكتابة',[{k:'tx',l:'اكتب سطرًا لكل علاقة بـ «'+esc(me.n)+'» بالشكل «العلاقة: الأسماء» (تعمل في أي مكان):<br>أب: أحمد<br>أم: سارة (أحمر)<br>إخوة: خالد (أخضر)، ليلى (أنثى)<br>زوجة: نورة<br>أبناء: عمر (مؤكد)، رنا (أنثى، متوفى)<br>أصدقاء: سعد (عمل)، ماجد (دراسة)، فهد (حي)<br><small>بين القوسين: أحمر/أصفر/أخضر، ذكر/أنثى/بنت/ولد، متوفى، مؤكد/معتذر، فئة الصديق (عمل/دراسة/حي). الافتراضي: الجنس حسب العلاقة، الأولوية أحمر، الحضور مؤكد. الأصدقاء غير مربوطين ببعضهم.</small>',t:'area',v:''}],v=>runAI(t,me,v.tx,sm),null,'إنشاء')}
+ dlg('✨ إضافة أفراد حول «'+esc(me.n)+'» بالكتابة',[{k:'tx',l:'اكتب سطرًا لكل علاقة بـ «'+esc(me.n)+'» بالشكل «العلاقة: الأسماء» (تعمل في أي مكان):<br>أب: أحمد<br>أم: سارة (أحمر)<br>إخوة: خالد (أخضر)، ليلى (أنثى)<br>زوجة: نورة<br>أبناء: عمر (مؤكد)، رنا (أنثى، متوفى)<br>أصدقاء: سعد (عمل)، ماجد (دراسة)، فهد (حي)<br><small>بين القوسين: أحمر/أصفر/أخضر، ذكر/أنثى/بنت/ولد، متوفى، مؤكد/معتذر، فئة الصديق (عمل/دراسة/حي). الافتراضي: الجنس حسب العلاقة، الأولوية أحمر، الحضور مؤكد.</small>',t:'area',v:''}],v=>runAI(t,me,v.tx,sm),null,'إنشاء')}
 async function runAI(t,me,txt,sm){if(!(txt||'').trim())return;const ts=$('#ts');ts.textContent='⏳ جارٍ إنشاء الأفراد…';ts.style.display='block';
- try{let D=parseQuick(txt);if(!D){if(!sm)throw{message:'اكتب أسطرًا بصيغة «العلاقة: الأسماء» مثل «أب: أحمد»'};D=await sm.json(`حوّل وصف عائلة إلى JSON فقط، بلا أي نص أو علامات أخرى.
-الفرد المحدد اسمه «${me.n}» (${me.g=='f'?'أنثى':'ذكر'}) ومعرّفه "me" ولا تضعه في people.
-الصيغة: {"people":[{"id":"a1","n":"الاسم","g":"m أو f","d":0 أو 1,"pr":1 أو 2 أو 3,"st":"y أو n"}],"unions":[{"p":"id","s":"id أو null","kids":["id"]}]}
-القواعد: كل زواج/أبوة union واحد. الأولوية pr: 1 أحمر، 2 أصفر، 3 أخضر، وإن لم تُذكر فاستخدم 1. الحضور st: "y" مؤكد (افتراضي)، "n" معتذر. d=1 إن ذُكر أنه متوفى (حينها لا st). لا تكرر أي شخص.
-الوصف: ${txt}`,{modelTier:'quick'})}
+ try{let D=parseQuick(txt);if(!D){if(!sm)throw{message:'اكتب أسطرًا بصيغة «العلاقة: الأسماء» مثل «أب: أحمد»'};D=await sm.json(`حوّل وصف عائلة إلى JSON فقط. الفرد المحدد «${me.n}» id="me". الصيغة: {"people":[{"id","n","g":"m/f","d":0/1,"pr":1/2/3,"st":"y/n"}],"unions":[{"p","s","kids"}]}. pr=1 أحمر (افتراضي)، st="y" مؤكد (افتراضي). الوصف: ${txt}`,{modelTier:'quick'})}
   aiApply(t,me,D);ts.style.display='none';CH()}
  catch(e){ts.textContent='تعذّر الإنشاء: '+((e&&e.message)||'');setTimeout(()=>ts.style.display='none',4500)}}
 function moveP(t,id){const p=t.persons[id];dlg('نقل «'+esc(p.n)+'» إلى شجرة جديدة',[{k:'tn',l:'اسم الشجرة الجديدة',t:'text',v:'فرع '+p.n}],v=>{const nm=(v.tn||'').trim()||'شجرة جديدة';
@@ -266,7 +287,9 @@ $('#tr').addEventListener('click',e=>{const te=e.target.closest('.t[data-t]');if
  else if(k=='hd'){snap();t.hid=1;ch()}
  else addP(t,id,k)});
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform=`translate(${S.v.x}px,${S.v.y}px) scale(${S.v.k})`;
-function collectLinked(t){const out=new Set([t.id]);let changed=true;while(changed){changed=false;S.trees.forEach(x=>{if(out.has(x.id))return;Object.values(x.persons).forEach(p=>{if(p.br&&out.has(p.br)){out.add(x.id);changed=true}});Object.values(x.persons).forEach(p=>{if(out.has(x.id)&&p.br&&!out.has(p.br)){const c=S.trees.find(y=>y.id==p.br);if(c){out.add(c.id);changed=true}}})})}return out}
+// سحب: شجرة الأصدقاء تتحرك وحدها، العائلة مع ما يرتبط بها
+function collectLinked(t){if(t.ty=='fr')return new Set([t.id]); // الأصدقاء وحدها
+ const out=new Set([t.id]);let changed=true;while(changed){changed=false;S.trees.forEach(x=>{if(out.has(x.id))return;Object.values(x.persons).forEach(p=>{if(p.br&&out.has(p.br)){out.add(x.id);changed=true}});Object.values(x.persons).forEach(p=>{if(out.has(x.id)&&p.br&&!out.has(p.br)){const c=S.trees.find(y=>y.id==p.br);if(c&&c.ty!='fr'){out.add(c.id);changed=true}}})})}return out}
 bd.addEventListener('pointerdown',e=>{if(e.target.closest('.p,button:not(.mv)'))return;const th=e.target.closest('.th');
  if(th){const t=S.trees.find(x=>x.id==th.parentNode.dataset.t);const linked=collectLinked(t);const positions={};linked.forEach(id=>{const tt=S.trees.find(x=>x.id==id);positions[id]={x:tt.x,y:tt.y,el:document.querySelector(`.t[data-t="${id}"]`)}});
   drag={linked:positions,sx:e.clientX,sy:e.clientY,mode:'tree'}}
@@ -281,7 +304,6 @@ $('#zi').onclick=()=>zoom(1.2,innerWidth/2,innerHeight/2);$('#zo').onclick=()=>z
 $('#zr').onclick=()=>{S.v={x:40,y:70,k:1};tf();save()};$('#ms').onclick=()=>{MSON=!MSON;MS.clear();render()};
 $('#un').onclick=undo;$('#re').onclick=redo;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key=='z'&&!e.shiftKey){e.preventDefault();undo()}else if((e.ctrlKey||e.metaKey)&&(e.key=='y'||(e.key=='z'&&e.shiftKey))){e.preventDefault();redo()}
- // Delete key: حذف المحددين
  if((e.key=='Delete'||e.key=='Backspace')&&MSON&&MS.size&&!(e.target.tagName=='INPUT'||e.target.tagName=='TEXTAREA')){e.preventDefault();snap();S.trees.forEach(t=>{Array.from(MS).forEach(id=>{if(t.persons[id]){if(t.ty=='fr'){const p=t.persons[id];if(p.of){const f=t.persons[p.of];f.L=f.L.filter(x=>x!=id);f.R=f.R.filter(x=>x!=id)}else{const rl=[...p.L,...p.R];rl.forEach(r=>{const q=t.persons[r];delete q.of;q.L=[];q.R=[]});t.order.splice(t.order.indexOf(id),1,...rl)}delete t.persons[id]}
    else{t.unions.filter(u=>u.p==id).forEach(u=>{if(u.s){t.persons[u.s].j=0;u.p=u.s;u.s=null}else u.p=null});t.unions.forEach(u=>{if(u.s==id)u.s=null;u.kids=u.kids.filter(k=>k!=id)});delete t.persons[id];t.unions=t.unions.filter(u=>u.p&&t.persons[u.p])}}})});MS.clear();ch()}});
 $('#mb').onclick=e=>{const m=e.target.dataset.m;if(!m)return;snap();
@@ -293,5 +315,46 @@ $('#mb').onclick=e=>{const m=e.target.dataset.m;if(!m)return;snap();
  ch()};
 $('#nf').onclick=()=>emptyT('fam');$('#nr').onclick=()=>emptyT('fr');
 $('#bk').onclick=()=>dlg('نسخ احتياطي',[{k:'js',l:'انسخ النص للاحتفاظ به، أو الصق نسخة سابقة واضغط استيراد',t:'area',v:JSON.stringify(S)}],v=>{try{const n=JSON.parse(v.js);if(!Array.isArray(n.trees))throw 0;snap();S=n;tf();ch()}catch(x){dlg('نص غير صالح',[],()=>{},null,'حسناً')}},null,'استيراد');
+// ============ لوحة الحفظ/الاسترداد/الرابط ============
+$('#wbsave').onclick=()=>{snap();save();const ts=$('#ts');ts.textContent='✔ تم الحفظ';ts.style.display='block';setTimeout(()=>ts.style.display='none',1500)};
+$('#wbload').onclick=()=>{dlg('استرداد اللوحة',[{k:'js',l:'الصق نص JSON المحفوظ سابقاً',t:'area',v:''}],v=>{try{const n=JSON.parse(v.js);if(!Array.isArray(n.trees))throw 0;snap();S=n;tf();ch();const ts=$('#ts');ts.textContent='✔ تم الاسترداد';ts.style.display='block';setTimeout(()=>ts.style.display='none',1500)}catch(x){dlg('نص غير صالح',[],()=>{},null,'حسناً')}},null,'استرداد')};
+$('#wblink').onclick=async()=>{
+ try{
+  // ضغط البيانات بـ CompressionStream إذا متاح
+  const json=JSON.stringify(S);
+  let b64;
+  if(typeof CompressionStream!=='undefined'){
+   const cs=new CompressionStream('gzip');
+   const stream=new Blob([json]).stream().pipeThrough(cs);
+   const buf=await new Response(stream).arrayBuffer();
+   b64=btoa(String.fromCharCode(...new Uint8Array(buf)));
+   b64='gz:'+b64;
+  }else{b64='raw:'+btoa(unescape(encodeURIComponent(json)))}
+  const url=location.origin+location.pathname+'#wb='+encodeURIComponent(b64);
+  // انسخ للحافظة
+  try{await navigator.clipboard.writeText(url)}catch(e){}
+  dlg('رابط مشترك',[{k:'u',l:'انسخ هذا الرابط وأرسله لمن تريد (يفتح نفس اللوحة):',t:'area',v:url}],()=>{},null,'حسناً');
+ }catch(e){dlg('تعذّر إنشاء الرابط',[{k:'m',l:'الخطأ: '+(e.message||e),t:'text',v:''}],()=>{},null,'حسناً')}
+};
+// قراءة الرابط عند التحميل
+(async()=>{
+ const h=location.hash;
+ if(h.startsWith('#wb=')){
+  try{
+   let b64=decodeURIComponent(h.slice(4));
+   let json;
+   if(b64.startsWith('gz:')){b64=b64.slice(3);
+    const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+    const ds=new DecompressionStream('gzip');
+    const stream=new Blob([bin]).stream().pipeThrough(ds);
+    json=await new Response(stream).text();
+   }else{b64=b64.slice(4);json=decodeURIComponent(escape(atob(b64)))}
+   const n=JSON.parse(json);
+   if(Array.isArray(n.trees)){snap();S=n;tf();ch();
+    const ts=$('#ts');ts.textContent='✔ تم تحميل اللوحة من الرابط';ts.style.display='block';setTimeout(()=>ts.style.display='none',2500);
+    history.replaceState(null,'',location.pathname);}
+  }catch(e){console.warn('رابط غير صالح',e)}
+ }
+})();
 tf();render();if(!S.trees.length)emptyT('fam');
 </script></body></html>
