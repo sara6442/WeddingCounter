@@ -43,17 +43,25 @@ button{font:inherit;cursor:pointer;color:inherit}
 #dl input[type=text],#dl select,#dl textarea{width:100%;font:inherit;padding:6px;background:var(--bg);color:var(--ink);border:2px solid var(--ln);border-radius:8px}#dl textarea{height:170px}
 .ch{display:flex;gap:5px;flex-wrap:wrap}.ch button,.bt button{background:var(--bg);border:2px solid var(--ln);border-radius:8px;padding:3px 10px}.ch .on,#ok{background:#ffd95a!important;color:#222}
 .bt{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.rd{color:#c33}
+.pc{position:absolute;right:4px;top:1px;font-size:9px;opacity:.7;background:#fff;color:#222;padding:0 3px;border-radius:4px}
+/* عدّاد زاوية الشجرة */
+.tcnt{position:absolute;left:-2px;bottom:-2px;background:var(--card);border:2px solid var(--ln);border-radius:8px 4px 9px 5px;padding:3px 8px;font-size:11px;line-height:1.4;direction:rtl;z-index:4;pointer-events:none}
+.tcnt b{font-weight:600}.tcnt .m{color:#4a90d9}.tcnt .f{color:#e0568f}.tcnt .dead{color:#888}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><filter id="wb"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter></svg>
 <div id="bd"><div id="cv"><svg id="lk" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none" fill="none" stroke="currentColor" stroke-width="2"></svg><div id="tr"></div></div></div>
-<div id="top"><h1>✏️ عدّاد المعازيم</h1><button class="tb" id="nf">🌳 شجرة عائلة</button><button class="tb" id="nr">🧑‍🤝‍🧑 شجرة أصدقاء</button><button class="tb" id="bk">💾 نسخ احتياطي</button><button class="tb" id="ms">☑ تحديد</button><button class="tb" id="zi">＋</button><button class="tb" id="zo">－</button><button class="tb" id="zr">⌂</button></div>
+<div id="top"><h1>✏️ عدّاد المعازيم</h1><button class="tb" id="nf">🌳 شجرة عائلة</button><button class="tb" id="nr">🧑‍🤝‍🧑 شجرة أصدقاء</button><button class="tb" id="bk">💾 نسخ احتياطي</button><button class="tb" id="ms">☑ تحديد</button><button class="tb" id="un">↶ تراجع</button><button class="tb" id="re">↷ إعادة</button><button class="tb" id="zi">＋</button><button class="tb" id="zo">－</button><button class="tb" id="zr">⌂</button></div>
 <div id="cnt"></div><div id="ts"></div><div id="mb"></div><div id="ov"><div id="dl"></div></div>
 <script>
 const $=s=>document.querySelector(s),W=130,H=56,G=26,V=86;
 let MSON=false,S=null,TW={},KO={},POS={},OX={},TH={},memo,sel=null,drag=null;
+let UNDO=[],REDO=[],UNDO_LOCK=false;
 try{S=JSON.parse(localStorage.getItem('mz')||'null')}catch(e){}
 if(!S||!S.trees)S={trees:[],v:{x:40,y:70,k:1}};
 const save=()=>{try{localStorage.setItem('mz',JSON.stringify(S))}catch(e){}};
+function snap(){if(UNDO_LOCK)return;UNDO.push(JSON.stringify(S));if(UNDO.length>60)UNDO.shift();REDO=[]}
+function undo(){if(!UNDO.length)return;REDO.push(JSON.stringify(S));const p=UNDO.pop();UNDO_LOCK=true;S=JSON.parse(p);try{localStorage.setItem('mz',p)}catch(e){}tf();render();UNDO_LOCK=false}
+function redo(){if(!REDO.length)return;UNDO.push(JSON.stringify(S));const p=REDO.pop();UNDO_LOCK=true;S=JSON.parse(p);try{localStorage.setItem('mz',p)}catch(e){}tf();render();UNDO_LOCK=false}
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PU=(t,id)=>t.unions.find(u=>u.kids.includes(id));
@@ -62,6 +70,7 @@ const tp=(t,x)=>{for(let i=0;i<99;i++){const q=PU(t,x);if(!q)break;x=q.p}return 
 const MS=new Set();
 const gc=t=>{if(t.ty=='fr')return;t.unions=t.unions.filter(u=>{const p=t.persons[u.p];if(p&&p.ph&&!u.kids.length){delete t.persons[u.p];return false}return true})};
 const ch=()=>{S.trees.forEach(gc);save();render()};
+const CH=()=>{snap();ch()};
 const cl=(A,B)=>A.some(a=>B.some(b=>a.r==b.r&&Math.abs(a.x-b.x)<W+10));
 const sh=(A,x,r)=>A.map(a=>({i:a.i,x:a.x+x,r:a.r+r}));
 function anc(t,sid,sd){const Q=PU(t,sid);if(!Q)return[];KO[Q.id]={s:sid,d:sd};
@@ -79,7 +88,9 @@ function lay(t,id){if(memo[id])return memo[id];const B=memo[id]={it:[{i:id,x:0,r
   if(!ok)it=it.concat(sh(acc,cm-mid+4000,0))});
  B.it=it;return B}
 const hsd=(t,id,s)=>t.unions.some(u=>u.p==id&&u.s&&u.side==s);
-function ph(t,id,x,y,pl){const p=t.persons[id];if(p.ph)return'';return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}<b>${esc(p.n)}</b>${p.sk?'<small>مذكور ↩</small>':''}<button data-a="ed">✎</button>${p.of?'':`<button data-a="br" class="${p.br?'on':''}" title="حلقة">${(c=>c&&c.ty=='fr'&&c.hid?'👁':'🌿')(p.br&&S.trees.find(x=>x.id==p.br))}</button>`}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${[...pl].map(k=>`<u class="pl ${k=='t'?'pt':k}" data-a="${k}">+</u>`).join('')}</div>`}
+function ph(t,id,x,y,pl){const p=t.persons[id];if(p.ph)return'';const cat=p.cat&&p.cat!='none'?`<i class="pc">${({work:'💼',study:'🎓',hood:'🏘️'})[p.cat]||''}</i>`:'';return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}${cat}<b>${esc(p.n)}</b>${p.sk?'<small>مذكور ↩</small>':''}<button data-a="ed">✎</button>${p.of?'':`<button data-a="br" class="${p.br?'on':''}" title="حلقة">${(c=>c&&c.ty=='fr'&&c.hid?'👁':'🌿')(p.br&&S.trees.find(x=>x.id==p.br))}</button>`}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${[...pl].map(k=>`<u class="pl ${k=='t'?'pt':k}" data-a="${k}">+</u>`).join('')}</div>`}
+// عدّاد داخل الشجرة
+function tcnt(t){let m=0,f=0,dm=0,df=0;Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}if(p.st=='n')return;p.g=='f'?f++:m++});return`<div class="tcnt"><b>عداد:</b> <span class="m">ذكور ${m}</span> · <span class="f">إناث ${f}</span>${dm+df?` · <span class="dead">متوفى ${dm+df}</span>`:''}</div>`}
 function render(){memo={};KO={};POS={};let h='';
  S.trees.forEach(t=>{if(t.hid&&t.ty!='fr')t.hid=0;if(t.hid)return;const fr=t.ty=='fr',pos={};let w,ox,m,my=0,d='',ps='';const em=!Object.keys(t.persons).length;
   if(em){w=230;ox=20;ps='<button class="big" data-a="first">＋</button>'}else if(fr){const L=Math.max(0,...t.order.map(i=>t.persons[i].L.length)),R=Math.max(0,...t.order.map(i=>t.persons[i].R.length));
@@ -94,10 +105,10 @@ function render(){memo={};KO={};POS={};let h='';
   Object.keys(pos).forEach(id=>{const p=t.persons[id];if(!p)return;my=Math.max(my,pos[id].y);
    ps+=ph(t,id,X(id),Y(id),fr?(p.of?'':'blr'):'tb'+(p.j||hsd(t,id,'L')?'':'l')+(p.j||hsd(t,id,'R')?'':'r'))});
   const hh=em?190:my+H+58+26;TH[t.id]=hh;TW[t.id]=w;const lk=S.trees.some(x=>Object.values(x.persons).some(p=>p.br==t.id));
-  h+=`<div class="t" data-t="${t.id}" style="left:${t.x}px;top:${t.y}px;width:${w}px;height:${hh}px"><div class="th"><button class="mv" data-a="mv" title="تحريك الشجرة">✥</button><span>${fr?'🧑‍🤝‍🧑':'🌳'} ${esc(t.name)}</span><button data-a="tn" title="تعديل الاسم">✎</button>${lk&&fr?'<button data-a="hd" title="إخفاء">👁</button>':''}<button data-a="dup" title="نسخ الشجرة">⧉</button><button data-a="tx" title="حذف الشجرة">🗑</button></div><svg width="${w}" height="${hh}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wb)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${ps}</div>`});
+  h+=`<div class="t" data-t="${t.id}" style="left:${t.x}px;top:${t.y}px;width:${w}px;height:${hh}px"><div class="th"><button class="mv" data-a="mv" title="تحريك الشجرة">✥</button><span>${fr?'🧑‍🤝‍🧑':'🌳'} ${esc(t.name)}</span><button data-a="tn" title="تعديل الاسم">✎</button>${lk&&fr?'<button data-a="hd" title="إخفاء">👁</button>':''}<button data-a="dup" title="نسخ الشجرة">⧉</button><button data-a="tx" title="حذف الشجرة">🗑</button></div><svg width="${w}" height="${hh}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wb)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${ps}${em?'':tcnt(t)}</div>`});
  $('#tr').innerHTML=h;links();cnt();msUi()}
 function msUi(){document.body.classList.toggle('ms',MSON);$('#ms').classList.toggle('on',MSON);const b=$('#mb');b.style.display=MSON?'flex':'none';
- if(MSON)b.innerHTML=`<b>${MS.size} محدد</b><button class="tb" data-m="y">✔ أكّد الحضور</button><button class="tb" data-m="n">✖ اعتذر</button><button class="tb" data-m="0">↺ بلا حالة</button><button class="tb" data-m="all">تحديد الكل</button><button class="tb" data-m="x">إنهاء</button>`}
+ if(MSON)b.innerHTML=`<b>${MS.size} محدد</b><button class="tb" data-m="y">✔ أكّد الحضور</button><button class="tb" data-m="n">✖ اعتذر</button><button class="tb" data-m="0">↺ بلا حالة</button><button class="tb" data-m="all">تحديد الكل</button><button class="tb" data-m="del">🗑 حذف</button><button class="tb" data-m="x">إنهاء</button>`}
 function links(){let a='',b='';S.trees.forEach(t=>{if(t.hid)return;Object.keys(POS[t.id]||{}).forEach(id=>{const p=t.persons[id],c=p&&p.br&&S.trees.find(x=>x.id==p.br);if(!c||c.hid||!POS[c.id])return;
  const bp=c.persons[p.bp]?p.bp:Object.keys(c.persons)[0],q=POS[t.id][id],r=POS[c.id][bp];if(!r)return;
  const cx=t.x+q.x+OX[t.id],ty=t.y+q.y+58,tx=c.x+r.x+OX[c.id],tY=c.y+r.y+58;
@@ -106,9 +117,9 @@ function links(){let a='',b='';S.trees.forEach(t=>{if(t.hid)return;Object.keys(P
   a+=p.ph?`M${cx} ${ty+H}V${ty-V/2}H${ex}V${ey}`:`M${cx+16} ${ty}V${ty-V/2}H${ex}V${ey}`}
  else{const rt=tx>cx,sx=cx+(rt?1:-1)*W/2,ex=tx-(rt?1:-1)*W/2,mx=(sx+ex)/2;a+=`M${sx} ${ty+H/2}H${mx}V${tY+H/2}H${ex}`}})});
  $('#lk').innerHTML=`<path d="${a}" stroke-width="2.5" stroke-linejoin="round"/><path d="${b}" stroke-dasharray="7 6"/>`}
-function cnt(){const c={};let dead=0,none=0,ye=0,no=0;S.trees.forEach(t=>Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){dead++;return}if(p.sk)return;if(p.st=='n'){no++;return}if(p.st=='y')ye++;if(!p.pr){none++;return}for(let j=p.pr;j<=3;j++)c[j+p.g]=(c[j+p.g]||0)+1}));
+function cnt(){const c={};S.trees.forEach(t=>Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d)return;if(p.sk)return;if(p.st=='n')return;if(!p.pr)return;for(let j=p.pr;j<=3;j++)c[j+p.g]=(c[j+p.g]||0)+1}));
  const K=['#e5484d','#f5c518','#3cb371'];
- $('#cnt').innerHTML=[1,2,3].map(j=>{const m=c[j+'m']||0,f=c[j+'f']||0;return`<div class="cr"><div class="tx"><b class="tot">المجموع : ${m+f}</b><span class="bl">ذكور : ${m}</span><span class="pk">إناث : ${f}</span></div><em>${K.slice(0,j).map(x=>`<i style="background:${x}"></i>`).join('')}</em></div>`}).join('')+`<small class="stl">✔ أكّدوا: ${ye} · ✖ اعتذروا: ${no}</small>`}
+ $('#cnt').innerHTML=[1,2,3].map(j=>{const m=c[j+'m']||0,f=c[j+'f']||0;return`<div class="cr"><div class="tx"><b class="tot">المجموع : ${m+f}</b><span class="bl">ذكور : ${m}</span><span class="pk">إناث : ${f}</span></div><em>${K.slice(0,j).map(x=>`<i style="background:${x}"></i>`).join('')}</em></div>`}).join('')}
 function dlg(title,F,ok,extra,lbl){const v={};let h=`<h3>${title}</h3>`;
  F.forEach(f=>{v[f.k]=f.v;h+=`<div data-f="${f.k}">`+(f.t=='check'?`<label><input type="checkbox" data-k="${f.k}" ${f.v?'checked':''}> ${f.l}</label>`:`<label>${f.l}</label>`);
   if(f.t=='text')h+=`<input type="text" data-k="${f.k}" value="${esc(f.v||'')}">`;
@@ -121,13 +132,20 @@ function dlg(title,F,ok,extra,lbl){const v={};let h=`<h3>${title}</h3>`;
  d.querySelectorAll('.ch button').forEach(b=>b.onclick=()=>{b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');v[b.parentNode.dataset.k]=b.dataset.v;sy()});
  d.querySelectorAll('input,textarea,select').forEach(i=>i.oninput=i.onchange=()=>{v[i.dataset.k]=i.type=='checkbox'?i.checked:i.value;sy()});
  sy();$('#cx').onclick=cl;$('#ok').onclick=()=>{const bad=F.filter(f=>f.req&&!(f.h&&f.h(v))&&!v[f.k]);if(bad.length){bad.forEach(f=>d.querySelector(`[data-f="${f.k}"]`).style.outline='2px solid #e5484d');return}cl();ok(v)};d.querySelectorAll('.ex').forEach(b=>b.onclick=()=>{cl();extra[b.dataset.i][1]()})}
-const pf=p=>[{k:'n',l:'الاسم',t:'text',v:p.n},{k:'g',l:'الجنس',o:[['m','ذكر'],['f','أنثى']],v:p.g},{k:'d',l:'الحالة',o:[['0','حي'],['1','متوفى']],v:p.d?'1':'0'},{k:'pr',l:'الأولوية (إلزامي)',o:[['1','🔴 أحمر'],['2','🟡 أصفر'],['3','🟢 أخضر']],v:p.pr?''+p.pr:'1',h:v=>v.d=='1',req:1},{k:'st',l:'الحضور',o:[['','بدون'],['y','✔ أكّد'],['n','✖ اعتذر']],v:p.st||''},{k:'sk',l:'مذكور مسبقاً في عائلته (لا يُحسب)',t:'check',v:p.sk}];
-const ap=(p,v)=>{p.n=(v.n||'').trim()||'بدون اسم';p.g=v.g;p.d=+v.d;p.pr=+v.d?0:+v.pr;p.sk=!!v.sk;if(v.st)p.st=v.st;else delete p.st};
-const B=()=>({n:'',g:'m',d:0,pr:0,sk:false});
+// الأولوية الافتراضية أحمر + الحضور الافتراضي مؤكد + خيار "بدون" أخير
+const pf=p=>[{k:'n',l:'الاسم',t:'text',v:p.n},{k:'g',l:'الجنس',o:[['m','ذكر'],['f','أنثى']],v:p.g},{k:'d',l:'الحالة',o:[['0','حي'],['1','متوفى']],v:p.d?'1':'0'},{k:'pr',l:'الأولوية',o:[['1','🔴 أحمر'],['2','🟡 أصفر'],['3','🟢 أخضر']],v:''+(p.pr||1),h:v=>v.d=='1'},{k:'st',l:'الحضور',o:[['y','✔ أكّد'],['n','✖ اعتذر'],['','بدون']],v:p.d?'':(p.st!==undefined?p.st:'y'),h:v=>v.d=='1'},{k:'cat',l:'الفئة (للأصدقاء)',o:[['none','بدون'],['work','💼 عمل'],['study','🎓 دراسة'],['hood','🏘️ حي']],v:p.cat||'none',h:v=>v.ty!='fr'},{k:'sk',l:'مذكور مسبقاً في عائلته (لا يُحسب)',t:'check',v:p.sk}];
+const ap=(p,v)=>{p.n=(v.n||'').trim()||'بدون اسم';p.g=v.g;p.d=+v.d;p.pr=+v.d?0:(+v.pr||1);p.sk=!!v.sk;if(v.cat&&v.cat!='none')p.cat=v.cat;else delete p.cat;
+ // المتوفى: لا حالة حضور
+ if(p.d)delete p.st;
+ else if(v.st!==undefined&&v.st!=='')p.st=v.st;
+ else if(v.st==='')delete p.st;
+ else if(p.st===undefined)p.st='y'; // افتراضي مؤكد
+};
+const B=()=>({n:'',g:'m',d:0,pr:1,st:'y',sk:false});
 const nf=hd=>[{k:'ty',l:'نوع الشجرة',o:[['fam','🌳 شجرة عائلة'],['fr','🧑‍🤝‍🧑 شجرة أصدقاء']],v:'fam',h:hd},{k:'tn',l:'اسم الشجرة',t:'text',v:'',h:hd},...pf(B()).map(f=>({...f,h:f.h?v=>hd(v)||f.h(v):hd}))];
 function mk(v,x,y){const id=uid(),pid=uid(),fr=v.ty=='fr',pp={id:pid,j:0,br:null};if(fr){pp.L=[];pp.R=[]}ap(pp,v);const t={id,ty:fr?'fr':'fam',name:(v.tn||'').trim()||(fr?'شجرة الأصدقاء':'شجرة العائلة'),x,y,hid:0,persons:{[pid]:pp},unions:[]};if(fr)t.order=[pid];S.trees.push(t);return t}
 function newT(first,x,y){const k=S.v.k;x=x??(-S.v.x+innerWidth/2)/k-120;y=y??(-S.v.y+innerHeight/3)/k-60;
- dlg(first?'أهلاً! ابدأ شجرتك':'شجرة جديدة',nf(()=>false),v=>{mk(v,x,y);ch()},null,'ابدأ')}
+ dlg(first?'أهلاً! ابدأ شجرتك':'شجرة جديدة',nf(()=>false),v=>{mk(v,x,y);CH()},null,'ابدأ')}
 function addP(t,id,a){const me=t.persons[id],fr=t.ty=='fr',us=t.unions.filter(u=>u.p==id||u.s==id),b=B(),pu=a=='t'?PU(t,id):null,tgt=pu&&t.persons[pu.p].ph?t.persons[pu.p]:me;let roles=null;
  if(a=='l'||a=='r')b.g=fr?'f':me.g=='m'?'f':'m';
  if(a=='b'&&!fr&&us.length>1)roles=us.map(u=>[u.id,'مع '+(t.persons[u.s==id?u.p:u.s]||{n:''}).n]);
@@ -138,7 +156,7 @@ function addP(t,id,a){const me=t.persons[id],fr=t.ty=='fr',us=t.unions.filter(u=
   F.unshift({k:'role',l:'العلاقة بـ '+esc(me.n),o:[...(canP?[['p','والدان (أب/أم)']]:[]),['s','إخوة (أخ/أخت)']],v:canP?'p':'s'})}
  else if(roles&&roles.length>1)F.unshift({k:'role',l:'النوع',o:roles,v:roles[0][0]});
  dlg(fr?(a=='b'?'إضافة صديق':'إضافة قريب/ة (أم، أخت…) مرتبط بالصديق'):{t:'إضافة من الأعلى',b:'إضافة ابن/ابنة',l:'إضافة زوج/ة',r:'إضافة زوج/ة'}[a],F,v=>{const role=v.role||(roles&&roles[0][0]);
-  if(a=='t'&&role=='p'&&v.loc=='out'){const nt=mk({...v,ty:'fam'},t.x,t.y-220);tgt.br=nt.id;tgt.bp=Object.keys(nt.persons)[0];tgt.rel='p';sel=null;ch();return}
+  if(a=='t'&&role=='p'&&v.loc=='out'){const nt=mk({...v,ty:'fam'},t.x,t.y-220);tgt.br=nt.id;tgt.bp=Object.keys(nt.persons)[0];tgt.rel='p';sel=null;CH();return}
   const n={id:uid(),j:0,br:null};ap(n,v);t.persons[n.id]=n;
   if(fr){if(a=='b'){n.L=[];n.R=[];t.order.splice(t.order.indexOf(id)+1,0,n.id)}else{n.of=id;me[a=='l'?'L':'R'].push(n.id)}}
   else if(a=='t'){
@@ -146,8 +164,12 @@ function addP(t,id,a){const me=t.persons[id],fr=t.ty=='fr',us=t.unions.filter(u=
    else if(pu)pu.kids.splice(pu.kids.indexOf(id)+1,0,n.id);
    else{const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,br:null,ph:1};if(me.br&&me.rel=='p'){h.br=me.br;h.bp=me.bp;h.rel='p';me.br=null;delete me.bp;delete me.rel}t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:[id,n.id]})}}
   else if(a=='b'){let u=roles?t.unions.find(x=>x.id==role):us[0];if(!u){u={id:uid(),p:id,s:null,side:'R',kids:[]};t.unions.push(u)}u.kids.push(n.id)}
-  else{const side=a=='l'?'L':'R',nu=t.unions.find(u=>u.p==id&&!u.s);n.j=1;if(nu){nu.s=n.id;nu.side=side}else t.unions.push({id:uid(),p:id,s:n.id,side,kids:[]})}
-  sel=null;ch()})}
+  else{const side=a=='l'?'L':'R';n.j=1;
+   const nu=t.unions.find(u=>u.p==id&&!u.s&&u.side==side)||t.unions.find(u=>u.p==id&&!u.s);
+   if(nu){nu.s=n.id;nu.side=side}
+   else t.unions.push({id:uid(),p:id,s:n.id,side,kids:[]})
+  }
+  sel=null;CH()})}
 function split(t,keep,mv,nm){const adj={};Object.keys(t.persons).forEach(i=>adj[i]=new Set());
  t.unions.forEach(u=>{const g=[u.p,u.s,...u.kids].filter(k=>k&&adj[k]);g.forEach(a=>g.forEach(b=>{if(a!=b)adj[a].add(b)}))});
  const seen=new Set(),bfs=s0=>{const c=[s0];seen.add(s0);for(let i=0;i<c.length;i++)adj[c[i]].forEach(n=>{if(!seen.has(n)){seen.add(n);c.push(n)}});return c};
@@ -161,18 +183,18 @@ function delP(t,id){const p=t.persons[id];
  else{t.unions.filter(u=>u.p==id).forEach(u=>{if(u.s){t.persons[u.s].j=0;u.p=u.s;u.s=null}else u.p=null});
   t.unions.forEach(u=>{if(u.s==id)u.s=null;u.kids=u.kids.filter(k=>k!=id)});delete t.persons[id];
   t.unions=t.unions.filter(u=>u.p&&t.persons[u.p]);gc(t);const ks=Object.keys(t.persons);if(ks.length)split(t,ks[0])}
- ch()}
-function emptyT(ty){const k=S.v.k,t={id:uid(),ty,name:ty=='fr'?'شجرة أصدقاء':'شجرة عائلة',x:(-S.v.x+innerWidth/2)/k-120,y:(-S.v.y+innerHeight/3)/k-60,hid:0,persons:{},unions:[]};if(ty=='fr')t.order=[];S.trees.push(t);ch()}
-function firstP(t){dlg('إضافة أول فرد',pf(B()),v=>{const n={id:uid(),j:0,br:null};ap(n,v);if(t.ty=='fr'){n.L=[];n.R=[];t.order=[n.id]}t.persons[n.id]=n;ch()})}
+ CH()}
+function emptyT(ty){const k=S.v.k,t={id:uid(),ty,name:ty=='fr'?'شجرة أصدقاء':'شجرة عائلة',x:(-S.v.x+innerWidth/2)/k-120,y:(-S.v.y+innerHeight/3)/k-60,hid:0,persons:{},unions:[]};if(ty=='fr')t.order=[];S.trees.push(t);CH()}
+function firstP(t){dlg('إضافة أول فرد',pf(B()),v=>{const n={id:uid(),j:0,br:null};ap(n,v);if(t.ty=='fr'){n.L=[];n.R=[];t.order=[n.id]}t.persons[n.id]=n;CH()})}
 function dupT(t){const c=JSON.parse(JSON.stringify(t)),m={},mp=i=>m[i]||(m[i]=uid()),np={};c.id=uid();c.name=t.name+' (نسخة)';c.x=t.x+40;c.y=t.y+40;c.hid=0;
  Object.values(c.persons).forEach(p=>{p.id=mp(p.id);p.br=null;delete p.bp;delete p.rel;if(p.L)p.L=p.L.map(mp);if(p.R)p.R=p.R.map(mp);if(p.of)p.of=mp(p.of);np[p.id]=p});c.persons=np;
- c.unions.forEach(u=>{u.id=uid();u.p=u.p&&mp(u.p);u.s=u.s&&mp(u.s);u.kids=u.kids.map(mp)});if(c.order)c.order=c.order.map(mp);S.trees.push(c);ch()}
+ c.unions.forEach(u=>{u.id=uid();u.p=u.p&&mp(u.p);u.s=u.s&&mp(u.s);u.kids=u.kids.map(mp)});if(c.order)c.order=c.order.map(mp);S.trees.push(c);CH()}
 function dupP(t,id){const p=t.persons[id],n={...p,id:uid(),br:null,n:p.n+' (نسخة)'};delete n.st;delete n.bp;delete n.rel;
  if(t.ty=='fr'){if(p.of){const f=t.persons[p.of];f[f.R.includes(id)?'R':'L'].push(n.id)}else{n.L=[];n.R=[];t.order.splice(t.order.indexOf(id)+1,0,n.id)}}
  else{n.j=0;const u=PU(t,id);if(u)u.kids.splice(u.kids.indexOf(id)+1,0,n.id);else{const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,br:null,ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:[id,n.id]})}}
- t.persons[n.id]=n;ch()}
+ t.persons[n.id]=n;CH()}
 function aiApply(t,me,D){const map={me:me.id},made=[];
- (D.people||[]).forEach(q=>{if(!q||!q.id||q.id=='me')return;const n={id:uid(),j:0,br:null,n:String(q.n||'؟').trim(),g:q.g=='f'?'f':'m',d:q.d?1:0,pr:q.d?0:([1,2,3].includes(+q.pr)?+q.pr:2),sk:false};map[q.id]=n.id;t.persons[n.id]=n;made.push(n.id)});
+ (D.people||[]).forEach(q=>{if(!q||!q.id||q.id=='me')return;const n={id:uid(),j:0,br:null,n:String(q.n||'؟').trim(),g:q.g=='f'?'f':'m',d:q.d?1:0,pr:q.d?0:([1,2,3].includes(+q.pr)?+q.pr:1),st:q.d?undefined:(q.st||'y'),sk:false};map[q.id]=n.id;t.persons[n.id]=n;made.push(n.id)});
  if(t.ty=='fr'){const f=me.of?t.persons[me.of]:me;made.forEach((id,i)=>{t.persons[id].of=f.id;f[i%2?'L':'R'].push(id)});if(D.friends&&D.friends.length)addFriends(t,D.friends,f.id);return}
  (D.unions||[]).forEach(u=>{let P=map[u.p],S=u.s&&map[u.s],K=(u.kids||[]).map(k=>map[k]).filter(Boolean);if(!P){P=S;S=null}
   if(!P){const k0=K.find(k=>PU(t,k));if(k0){const u0=PU(t,k0);K.forEach(k=>{if(!PU(t,k))u0.kids.push(k)})}else if(K.length>1){const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,br:null,ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:K})}return}
@@ -192,9 +214,16 @@ function aiApply(t,me,D){const map={me:me.id},made=[];
 const RL={أب:'F',والد:'F',أم:'M',ام:'M',والدة:'M',أخ:'B',اخ:'B',إخوة:'B',اخوة:'B',إخوان:'B',اخوان:'B',أخت:'Sg',اخت:'Sg',أخوات:'Sg',اخوات:'Sg',زوج:'H',زوجة:'W',زوجات:'W',ابن:'S',ولد:'S',أبناء:'S',ابناء:'S',أولاد:'S',اولاد:'S',ابنة:'D',بنت:'D',بنات:'D',صديق:'X',أصدقاء:'X',اصدقاء:'X',صديقة:'Xf',صديقات:'Xf'};
 function parseQuick(txt){const R={F:null,M:null,sib:[],sp:[],kids:[]},ppl=[],fr=[];let n=0,found=0,cur=null;
  txt.split(/\n+/).forEach(line=>{const m=line.match(/^\s*([^:：]+)[:：]\s*(.+)$/);if(!m)return;const key=RL[m[1].trim().replace(/^ال/,'')];if(!key)return;found=1;
-  m[2].split(/[،,]|\sو\s/).forEach(x=>{x=x.trim();if(!x)return;let pr=2,d=0,g=['F','B','H','S','X'].includes(key)?'m':'f';
-   const nm=x.replace(/\(([^)]*)\)/g,(_,q)=>{if(/أحمر|احمر|1/.test(q))pr=1;else if(/أصفر|اصفر|2/.test(q))pr=2;else if(/أخضر|اخضر|3/.test(q))pr=3;if(/متوف|ميت|رحم/.test(q))d=1;if(/أنثى|انثى|امرأة|امراة|\bf\b/i.test(q))g='f';else if(/ذكر|رجل|\bm\b/i.test(q))g='m';return''}).trim();
-   if(!nm)return;const o={n:nm,g,d,pr};
+  m[2].split(/[،,]|\sو\s/).forEach(x=>{x=x.trim();if(!x)return;let pr=1,d=0,st='y',cat='none',g=['F','B','H','S','X'].includes(key)?'m':'f';
+   const nm=x.replace(/\(([^)]*)\)/g,(_,q)=>{
+    if(/أحمر|احمر|1/.test(q))pr=1;else if(/أصفر|اصفر|2/.test(q))pr=2;else if(/أخضر|اخضر|3/.test(q))pr=3;
+    if(/متوف|ميت|رحم/.test(q)){d=1;st=undefined}
+    if(/معتذر|اعتذر|رفض|لا يحضر/i.test(q))st='n';
+    else if(/مؤكد|مؤكدة|يحضر|موافق/i.test(q))st='y';
+    if(/أنثى|انثى|امرأة|امراة|\bf\b|انثي|بنت|فتاة/i.test(q))g='f';else if(/ذكر|رجل|\bm\b|ولد|شاب/i.test(q))g='m';
+    if(/عمل|شغل/i.test(q))cat='work';else if(/دراس|جامع|مدرس/i.test(q))cat='study';else if(/حي|جار|جيرة/i.test(q))cat='hood';
+    return''}).trim();
+   if(!nm)return;const o={n:nm,g,d,pr,st,cat:cat=='none'?undefined:cat};
    if(key=='X'||key=='Xf'){cur={...o,rel:[]};fr.push(cur)}else if(cur)cur.rel.push(o);
    else{const id='x'+(n++);ppl.push({id,...o});if(key=='F')R.F=id;else if(key=='M')R.M=id;else if(key=='B'||key=='Sg')R.sib.push(id);else if(key=='H'||key=='W')R.sp.push(id);else R.kids.push(id)}})});
  if(!found||(!ppl.length&&!fr.length))return null;const un=[];
@@ -202,56 +231,67 @@ function parseQuick(txt){const R={F:null,M:null,sib:[],sp:[],kids:[]},ppl=[],fr=
   if(R.sp.length)R.sp.forEach((s,i)=>un.push({p:'me',s,kids:i?[]:R.kids}));else if(R.kids.length)un.push({p:'me',s:null,kids:R.kids})}
  return{people:ppl,unions:un,friends:fr}}
 function addFriends(ft,list,afterId){let at=afterId?ft.order.indexOf(afterId)+1:ft.order.length,first=null;
- list.forEach(o=>{const f={id:uid(),j:0,br:null,n:o.n,g:o.g,d:o.d,pr:o.d?0:o.pr,sk:false,L:[],R:[]};ft.persons[f.id]=f;ft.order.splice(at++,0,f.id);first=first||f.id;
-  o.rel.forEach((r,i)=>{const q={id:uid(),j:0,br:null,n:r.n,g:r.g,d:r.d,pr:r.d?0:r.pr,sk:false,of:f.id};ft.persons[q.id]=q;f[i%2?'L':'R'].push(q.id)})});return first}
-async function aiDlg(t,me){if(me.ph)return;const sm=window.claude&&claude.use?await claude.use('sample'):null;
- dlg('✨ إضافة أفراد حول «'+esc(me.n)+'» بالكتابة',[{k:'tx',l:'اكتب سطرًا لكل علاقة بـ «'+esc(me.n)+'» بالشكل «العلاقة: الأسماء» (تعمل في أي مكان):<br>أب: أحمد<br>أم: سارة (أحمر)<br>إخوة: خالد (أخضر)، ليلى (أنثى)<br>زوجة: نورة<br>أبناء: عمر، رنا (أنثى، متوفى)<br>أصدقاء: سعد، ماجد (أخضر)<br>أم: هدى &larr; تُربط بآخر صديق قبلها<br><small>بين القوسين: أحمر/أصفر/أخضر، ذكر/أنثى، متوفى. الافتراضي: الجنس حسب العلاقة والأولوية أصفر. الأصدقاء غير مربوطين ببعضهم. داخل Claude يمكنك أيضًا كتابة جملة حرة.</small>',t:'area',v:''}],v=>runAI(t,me,v.tx,sm),null,'إنشاء')}
+ list.forEach(o=>{const f={id:uid(),j:0,br:null,n:o.n,g:o.g,d:o.d,pr:o.d?0:o.pr,st:o.d?undefined:(o.st||'y'),sk:false,cat:o.cat,L:[],R:[]};ft.persons[f.id]=f;ft.order.splice(at++,0,f.id);first=first||f.id;
+  o.rel.forEach((r,i)=>{const q={id:uid(),j:0,br:null,n:r.n,g:r.g,d:r.d,pr:r.d?0:r.pr,st:r.d?undefined:(r.st||'y'),sk:false,cat:r.cat,of:f.id};ft.persons[q.id]=q;f[i%2?'L':'R'].push(q.id)})});return first}
+async function aiDlg(t,me){if(me.ph)return;const sm=window.claude&&window.claude.use?await window.claude.use('sample'):null;
+ dlg('✨ إضافة أفراد حول «'+esc(me.n)+'» بالكتابة',[{k:'tx',l:'اكتب سطرًا لكل علاقة بـ «'+esc(me.n)+'» بالشكل «العلاقة: الأسماء» (تعمل في أي مكان):<br>أب: أحمد<br>أم: سارة (أحمر)<br>إخوة: خالد (أخضر)، ليلى (أنثى)<br>زوجة: نورة<br>أبناء: عمر (مؤكد)، رنا (أنثى، متوفى)<br>أصدقاء: سعد (عمل)، ماجد (دراسة)، فهد (حي)<br><small>بين القوسين: أحمر/أصفر/أخضر، ذكر/أنثى/بنت/ولد، متوفى، مؤكد/معتذر، فئة الصديق (عمل/دراسة/حي). الافتراضي: الجنس حسب العلاقة، الأولوية أحمر، الحضور مؤكد. الأصدقاء غير مربوطين ببعضهم.</small>',t:'area',v:''}],v=>runAI(t,me,v.tx,sm),null,'إنشاء')}
 async function runAI(t,me,txt,sm){if(!(txt||'').trim())return;const ts=$('#ts');ts.textContent='⏳ جارٍ إنشاء الأفراد…';ts.style.display='block';
  try{let D=parseQuick(txt);if(!D){if(!sm)throw{message:'اكتب أسطرًا بصيغة «العلاقة: الأسماء» مثل «أب: أحمد»'};D=await sm.json(`حوّل وصف عائلة إلى JSON فقط، بلا أي نص أو علامات أخرى.
 الفرد المحدد اسمه «${me.n}» (${me.g=='f'?'أنثى':'ذكر'}) ومعرّفه "me" ولا تضعه في people.
-الصيغة: {"people":[{"id":"a1","n":"الاسم","g":"m أو f","d":0 أو 1,"pr":1 أو 2 أو 3}],"unions":[{"p":"id","s":"id أو null","kids":["id"]}]}
-القواعد: كل زواج/أبوة union واحد: p أحد الوالدين (الأب غالبًا) وs الآخر أو null وkids أبناؤهما. والدا "me" في union تضم kids فيه "me" وإخوته. زوج/ة "me" في union أحد p أو s فيه "me" وأبناؤهما في kids. أبناء أي شخص آخر بنفس الطريقة. الجنس g من الاسم والعلاقة. الأولوية pr: 1 أحمر، 2 أصفر، 3 أخضر، وإن لم تُذكر فاستخدم 2. d=1 إن ذُكر أنه متوفى. لا تكرر أي شخص.
+الصيغة: {"people":[{"id":"a1","n":"الاسم","g":"m أو f","d":0 أو 1,"pr":1 أو 2 أو 3,"st":"y أو n"}],"unions":[{"p":"id","s":"id أو null","kids":["id"]}]}
+القواعد: كل زواج/أبوة union واحد. الأولوية pr: 1 أحمر، 2 أصفر، 3 أخضر، وإن لم تُذكر فاستخدم 1. الحضور st: "y" مؤكد (افتراضي)، "n" معتذر. d=1 إن ذُكر أنه متوفى (حينها لا st). لا تكرر أي شخص.
 الوصف: ${txt}`,{modelTier:'quick'})}
-  aiApply(t,me,D);ts.style.display='none';ch()}
+  aiApply(t,me,D);ts.style.display='none';CH()}
  catch(e){ts.textContent='تعذّر الإنشاء: '+((e&&e.message)||'');setTimeout(()=>ts.style.display='none',4500)}}
 function moveP(t,id){const p=t.persons[id];dlg('نقل «'+esc(p.n)+'» إلى شجرة جديدة',[{k:'tn',l:'اسم الشجرة الجديدة',t:'text',v:'فرع '+p.n}],v=>{const nm=(v.tn||'').trim()||'شجرة جديدة';
  if(t.ty=='fr'){const nt={id:uid(),ty:'fr',name:nm,x:t.x+40,y:t.y+(TH[t.id]||200)+70,hid:0,persons:{},unions:[],order:[id]};
   [id,...p.L,...p.R].forEach(k=>{nt.persons[k]=t.persons[k];delete t.persons[k]});t.order=t.order.filter(x=>x!=id);S.trees.push(nt);if(!t.order.length)S.trees=S.trees.filter(x=>x!=t)}
  else{let keep;if(p.j){const j=t.unions.find(u=>u.s==id);keep=j.p;j.s=null}else{const q=PU(t,id);keep=q.p;q.kids=q.kids.filter(k=>k!=id)}gc(t);split(t,keep,id,nm)}
- ch()},null,'نقل')}
+ CH()},null,'نقل')}
 function brDlg(t,p){const ot=S.trees.filter(x=>x!=t&&Object.keys(x.persons).length),o=[['new','＋ شجرة جديدة'],...ot.map(x=>[x.id,x.name])],tg=v=>v.sel=='new'?{ty:v.ty}:ot.find(x=>x.id==v.sel);
  dlg('حلقة: شجرة مرتبطة بـ '+esc(p.n),[{k:'sel',l:'اربط بـ',t:'sel',o,v:'new'},
   ...ot.map(x=>({k:'pp'+x.id,l:'اختر الفرد المرتبط في «'+esc(x.name)+'»',t:'sel',o:Object.values(x.persons).map(q=>[q.id,q.n]),v:Object.keys(x.persons)[0],h:v=>v.sel!=x.id})),
   {k:'rel',l:'علاقة الشجرة الجديدة بهذا الفرد',o:[['p','والدان (الخط من الأعلى)'],['s','إخوة (خط عرضي)']],v:'p',h:v=>(tg(v)||{}).ty=='fr'},
-  ...nf(v=>v.sel!='new')],v=>{p.rel=v.rel;if(v.sel&&v.sel!='new'){p.br=v.sel;p.bp=v['pp'+v.sel]}else{const nt=mk(v,t.x+40,t.y+(TH[t.id]||200)+70);p.br=nt.id;p.bp=Object.keys(nt.persons)[0]}ch()},null,'ربط')}
+  ...nf(v=>v.sel!='new')],v=>{p.rel=v.rel;if(v.sel&&v.sel!='new'){p.br=v.sel;p.bp=v['pp'+v.sel]}else{const nt=mk(v,t.x+40,t.y+(TH[t.id]||200)+70);p.br=nt.id;p.bp=Object.keys(nt.persons)[0]}CH()},null,'ربط')}
 $('#tr').addEventListener('click',e=>{const te=e.target.closest('.t[data-t]');if(!te)return;const t=S.trees.find(x=>x.id==te.dataset.t),pe=e.target.closest('.p'),a=e.target.closest('[data-a]'),id=pe&&pe.dataset.i,p=id&&t.persons[id];
  if(MSON&&pe){MS.has(id)?MS.delete(id):MS.add(id);render();return}
  if(!a){if(pe){sel=id;render()}return}
  const k=a.dataset.a;if(k=='mv')return;
  if(k=='first'){firstP(t);return}if(k=='dup'){dupT(t);return}if(k=='ai'){aiDlg(t,p);return}
- if(k=='pr'){p.pr=p.pr%3+1;ch()}
- else if(k=='ed')dlg('تعديل',pf(p),v=>{ap(p,v);ch()},[...((t.ty=='fr'?!p.of&&t.order.length>1:p.j||PU(t,id))?[['نقل إلى شجرة جديدة',()=>moveP(t,id)]]:[]),...(!p.j&&!p.ph?[['تكرار الفرد',()=>dupP(t,id)]]:[]),['حذف الفرد فقط',()=>delP(t,id),'rd']]);
+ if(k=='pr'){snap();p.pr=p.pr%3+1;ch()}
+ else if(k=='ed')dlg('تعديل',pf(p),v=>{snap();ap(p,v);ch()},[...((t.ty=='fr'?!p.of&&t.order.length>1:p.j||PU(t,id))?[['نقل إلى شجرة جديدة',()=>moveP(t,id)]]:[]),...(!p.j&&!p.ph?[['تكرار الفرد',()=>dupP(t,id)]]:[]),['حذف الفرد فقط',()=>delP(t,id),'rd']]);
  else if(k=='br'){const c=p.br&&S.trees.find(x=>x.id==p.br);if(c&&c.ty=='fr'){c.hid=c.hid?0:1;ch()}else brDlg(t,p)}
- else if(k=='tn')dlg('اسم الشجرة',[{k:'n',l:'الاسم',t:'text',v:t.name}],v=>{t.name=v.n.trim()||t.name;ch()});
- else if(k=='tx')dlg('حذف شجرة «'+esc(t.name)+'»؟',[],()=>{S.trees=S.trees.filter(x=>x!=t);ch()},null,'نعم، احذف');
- else if(k=='hd'){t.hid=1;ch()}
+ else if(k=='tn')dlg('اسم الشجرة',[{k:'n',l:'الاسم',t:'text',v:t.name}],v=>{snap();t.name=v.n.trim()||t.name;ch()});
+ else if(k=='tx')dlg('حذف شجرة «'+esc(t.name)+'»؟',[],()=>{snap();S.trees=S.trees.filter(x=>x!=t);ch()},null,'نعم، احذف');
+ else if(k=='hd'){snap();t.hid=1;ch()}
  else addP(t,id,k)});
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform=`translate(${S.v.x}px,${S.v.y}px) scale(${S.v.k})`;
+function collectLinked(t){const out=new Set([t.id]);let changed=true;while(changed){changed=false;S.trees.forEach(x=>{if(out.has(x.id))return;Object.values(x.persons).forEach(p=>{if(p.br&&out.has(p.br)){out.add(x.id);changed=true}});Object.values(x.persons).forEach(p=>{if(out.has(x.id)&&p.br&&!out.has(p.br)){const c=S.trees.find(y=>y.id==p.br);if(c){out.add(c.id);changed=true}}})})}return out}
 bd.addEventListener('pointerdown',e=>{if(e.target.closest('.p,button:not(.mv)'))return;const th=e.target.closest('.th');
- if(th){const t=S.trees.find(x=>x.id==th.parentNode.dataset.t);drag={t,el:th.parentNode,sx:e.clientX,sy:e.clientY,a:t.x,b:t.y}}else drag={pan:1,sx:e.clientX,sy:e.clientY,a:S.v.x,b:S.v.y};bd.setPointerCapture(e.pointerId)});
+ if(th){const t=S.trees.find(x=>x.id==th.parentNode.dataset.t);const linked=collectLinked(t);const positions={};linked.forEach(id=>{const tt=S.trees.find(x=>x.id==id);positions[id]={x:tt.x,y:tt.y,el:document.querySelector(`.t[data-t="${id}"]`)}});
+  drag={linked:positions,sx:e.clientX,sy:e.clientY,mode:'tree'}}
+ else drag={pan:1,sx:e.clientX,sy:e.clientY,a:S.v.x,b:S.v.y};bd.setPointerCapture(e.pointerId)});
 bd.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
- if(drag.pan){S.v.x=drag.a+dx;S.v.y=drag.b+dy;tf()}else{drag.t.x=drag.a+dx/S.v.k;drag.t.y=drag.b+dy/S.v.k;drag.el.style.left=drag.t.x+'px';drag.el.style.top=drag.t.y+'px';links()}});
-const up=()=>{if(drag){drag=null;save()}};bd.addEventListener('pointerup',up);bd.addEventListener('pointercancel',up);
+ if(drag.pan){S.v.x=drag.a+dx;S.v.y=drag.b+dy;tf()}
+ else if(drag.mode=='tree'){const k=S.v.k;Object.keys(drag.linked).forEach(id=>{const o=drag.linked[id],tt=S.trees.find(x=>x.id==id);tt.x=o.x+dx/k;tt.y=o.y+dy/k;if(o.el){o.el.style.left=tt.x+'px';o.el.style.top=tt.y+'px'}});links()}});
+const up=()=>{if(drag){if(drag.mode=='tree')snap();drag=null;save()}};bd.addEventListener('pointerup',up);bd.addEventListener('pointercancel',up);
 function zoom(f,mx,my){const k0=S.v.k,k=Math.min(2,Math.max(.25,k0*f));S.v.x=mx-(mx-S.v.x)*k/k0;S.v.y=my-(my-S.v.y)*k/k0;S.v.k=k;tf();save()}
 bd.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.1:.9,e.clientX,e.clientY)},{passive:false});
 $('#zi').onclick=()=>zoom(1.2,innerWidth/2,innerHeight/2);$('#zo').onclick=()=>zoom(.83,innerWidth/2,innerHeight/2);
 $('#zr').onclick=()=>{S.v={x:40,y:70,k:1};tf();save()};$('#ms').onclick=()=>{MSON=!MSON;MS.clear();render()};
-$('#mb').onclick=e=>{const m=e.target.dataset.m;if(!m)return;
+$('#un').onclick=undo;$('#re').onclick=redo;
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key=='z'&&!e.shiftKey){e.preventDefault();undo()}else if((e.ctrlKey||e.metaKey)&&(e.key=='y'||(e.key=='z'&&e.shiftKey))){e.preventDefault();redo()}
+ // Delete key: حذف المحددين
+ if((e.key=='Delete'||e.key=='Backspace')&&MSON&&MS.size&&!(e.target.tagName=='INPUT'||e.target.tagName=='TEXTAREA')){e.preventDefault();snap();S.trees.forEach(t=>{Array.from(MS).forEach(id=>{if(t.persons[id]){if(t.ty=='fr'){const p=t.persons[id];if(p.of){const f=t.persons[p.of];f.L=f.L.filter(x=>x!=id);f.R=f.R.filter(x=>x!=id)}else{const rl=[...p.L,...p.R];rl.forEach(r=>{const q=t.persons[r];delete q.of;q.L=[];q.R=[]});t.order.splice(t.order.indexOf(id),1,...rl)}delete t.persons[id]}
+   else{t.unions.filter(u=>u.p==id).forEach(u=>{if(u.s){t.persons[u.s].j=0;u.p=u.s;u.s=null}else u.p=null});t.unions.forEach(u=>{if(u.s==id)u.s=null;u.kids=u.kids.filter(k=>k!=id)});delete t.persons[id];t.unions=t.unions.filter(u=>u.p&&t.persons[u.p])}}})});MS.clear();ch()}});
+$('#mb').onclick=e=>{const m=e.target.dataset.m;if(!m)return;snap();
  if(m=='x'){MSON=false;MS.clear()}
  else if(m=='all')S.trees.forEach(t=>{if(!t.hid)Object.values(t.persons).forEach(p=>{if(!p.ph&&!p.d)MS.add(p.id)})});
- else{S.trees.forEach(t=>MS.forEach(id=>{const p=t.persons[id];if(p){if(m=='0')delete p.st;else p.st=m}}));MS.clear()}
+ else if(m=='del'){S.trees.forEach(t=>{Array.from(MS).forEach(id=>{if(t.persons[id]){if(t.ty=='fr'){const p=t.persons[id];if(p.of){const f=t.persons[p.of];f.L=f.L.filter(x=>x!=id);f.R=f.R.filter(x=>x!=id)}else{const rl=[...p.L,...p.R];rl.forEach(r=>{const q=t.persons[r];delete q.of;q.L=[];q.R=[]});t.order.splice(t.order.indexOf(id),1,...rl)}delete t.persons[id]}
+   else{t.unions.filter(u=>u.p==id).forEach(u=>{if(u.s){t.persons[u.s].j=0;u.p=u.s;u.s=null}else u.p=null});t.unions.forEach(u=>{if(u.s==id)u.s=null;u.kids=u.kids.filter(k=>k!=id)});delete t.persons[id];t.unions=t.unions.filter(u=>u.p&&t.persons[u.p]);gc(t)}}})});MS.clear()}
+ else{S.trees.forEach(t=>MS.forEach(id=>{const p=t.persons[id];if(p){if(m=='0')delete p.st;else if(!p.d)p.st=m}}));MS.clear()}
  ch()};
 $('#nf').onclick=()=>emptyT('fam');$('#nr').onclick=()=>emptyT('fr');
-$('#bk').onclick=()=>dlg('نسخ احتياطي',[{k:'js',l:'انسخ النص للاحتفاظ به، أو الصق نسخة سابقة واضغط استيراد',t:'area',v:JSON.stringify(S)}],v=>{try{const n=JSON.parse(v.js);if(!Array.isArray(n.trees))throw 0;S=n;tf();ch()}catch(x){dlg('نص غير صالح',[],()=>{},null,'حسناً')}},null,'استيراد');
+$('#bk').onclick=()=>dlg('نسخ احتياطي',[{k:'js',l:'انسخ النص للاحتفاظ به، أو الصق نسخة سابقة واضغط استيراد',t:'area',v:JSON.stringify(S)}],v=>{try{const n=JSON.parse(v.js);if(!Array.isArray(n.trees))throw 0;snap();S=n;tf();ch()}catch(x){dlg('نص غير صالح',[],()=>{},null,'حسناً')}},null,'استيراد');
 tf();render();if(!S.trees.length)emptyT('fam');
 </script></body></html>
