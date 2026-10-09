@@ -30,7 +30,11 @@ button{font:inherit;cursor:pointer;color:inherit}
 #ts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--ink);border:2px solid var(--ln);border-radius:10px;padding:6px 14px;display:none;z-index:60}
 .pl{position:absolute;width:20px;height:20px;line-height:16px;text-align:center;background:#fff;color:#222;border:2px solid #555;border-radius:50%;font-size:15px;display:none;z-index:5;text-decoration:none}
 .p:hover .pl,.p.sel .pl{display:block}.p:hover,.p.sel{z-index:9}
-.pl.pt{top:-22px;left:50%;transform:translateX(-50%)}.pl.b{bottom:-22px;left:50%;transform:translateX(-50%)}.pl.l{left:-22px;top:15px}.pl.r{right:-22px;top:15px}
+/* الأزرار العلوية/السفلية خارج المستطيل تماماً */
+.pl.pt{top:-28px;left:50%;transform:translateX(-50%)}
+.pl.b{bottom:-28px;left:50%;transform:translateX(-50%)}
+.pl.l{left:-24px;top:15px}
+.pl.r{right:-24px;top:15px}
 .plu{
   position:absolute;
   width:30px; height:30px;
@@ -189,11 +193,9 @@ function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
  const mAlive=m-noM,fAlive=f-noF;
  return`<div class="tcnt">عداد<span class="pop"><b>العدد الكلي</b><br><span class="m">ذكور: ${m}</span> · <span class="f">إناث: ${f}</span><br><b>بعد خصم الاعتذار</b><br><span class="m">ذكور: ${mAlive}</span> · <span class="f">إناث: ${fAlive}</span><br><span class="dl">معتذر: ${noM+noF}</span>${dm+df?`<br><span class="dl">متوفى: ${dm+df}</span>`:''}</span></div>`}
 
-// ============ بناء صفوف شجرة الأصدقاء ============
 function buildRowsFr(t,ids){
   const set=new Set(ids);
   const isChild=new Set();
-  // من هو الابن؟ كل من هو في L/R لأحد، أو كل من له of في نفس الفئة
   ids.forEach(id=>{
     const p=t.persons[id];if(!p)return;
     (p.L||[]).forEach(x=>{if(set.has(x))isChild.add(x)});
@@ -203,23 +205,19 @@ function buildRowsFr(t,ids){
   const roots=ids.filter(id=>!isChild.has(id));
   const visited=new Set();
   const rows=[];
-
   function orderRow(rootId){
     const p=t.persons[rootId];if(!p)return [rootId];
     const left=[], right=[];
     (p.L||[]).forEach(x=>{if(set.has(x)&&!left.includes(x))left.push(x)});
     (p.R||[]).forEach(x=>{if(set.has(x)&&!right.includes(x))right.push(x)});
-    // أي ابن عنده of=root ولم يُضف بعد
     ids.forEach(id=>{
       if(id==rootId)return;
       const q=t.persons[id];if(!q)return;
       if(q.of==rootId && !left.includes(id) && !right.includes(id)) right.push(id);
     });
-    // ترتيب اليسار من الأبعد إلى الأقرب: نعكس
     const leftOrdered=left.slice().reverse();
     return [...leftOrdered, rootId, ...right];
   }
-
   const rootsWithKids=roots.filter(id=>{
     const p=t.persons[id];if(!p)return false;
     const hasLR=(p.L||[]).length||(p.R||[]).length;
@@ -227,7 +225,6 @@ function buildRowsFr(t,ids){
     return hasLR||hasOf;
   });
   const rootsAlone=roots.filter(id=>!rootsWithKids.includes(id));
-
   rootsWithKids.forEach(r=>{
     if(visited.has(r))return;
     const row=orderRow(r);
@@ -263,8 +260,8 @@ function render(){
       const byCat={};catsArr.forEach(c=>byCat[c]=[]);
       Object.values(t.persons).forEach(p=>{(byCat[p.cat]=byCat[p.cat]||[]).push(p.id)});
 
-      const gapTreeCat = 24;      // بين حد الشجرة وحد الفئة
-      const gapCatFriend = 32;    // بين حد الفئة وأول/آخر صديق
+      const gapTreeCat = 24;
+      const gapCatFriend = 32;
       const gapCols = 16;
       const padTop = 42;
       const headPad = 26;
@@ -272,15 +269,17 @@ function render(){
       const cGap = 22;
       const catTail = 48;
 
-      // أوسع فئة
+      // الحد الأدنى لعرض المحتوى (لضمان توسيط صديق واحد)
+      const minContentW = W*2 + gapCols;  // 276
+
       const catData=catsArr.map(c=>{
         const ids=byCat[c]||[];
         const rows=buildRowsFr(t,ids);
         const maxRowLen=Math.max(1,...rows.map(r=>r.length));
-        const contentW = maxRowLen*W + (maxRowLen-1)*gapCols;
+        const contentW = Math.max(minContentW, maxRowLen*W + (maxRowLen-1)*gapCols);
         return {c,rows,contentW};
       });
-      const maxContentW = Math.max(...catData.map(x=>x.contentW), W);
+      const maxContentW = Math.max(...catData.map(x=>x.contentW), minContentW);
       const CW = maxContentW + gapCatFriend*2;
 
       let cy=padTop+10;
@@ -307,7 +306,6 @@ function render(){
       w = gapTreeCat + CW + gapTreeCat;
       ox = 0;
 
-      // خطوط L/R (روابط أفقية داخل الفئة)
       catsArr.forEach(c=>{
         (byCat[c]||[]).forEach(id=>{
           const p=t.persons[id];if(!p||!pos[id])return;
@@ -340,7 +338,6 @@ function render(){
   });
   $('#tr').innerHTML=h;
 
-  // ارسم أفراد شجرة الأصدقاء
   boardTrees().forEach(t=>{
     if(t.ty!='fr'||t.hid)return;
     const el=document.querySelector('.t[data-t="'+t.id+'"]');if(!el)return;
@@ -366,16 +363,21 @@ function links(){
     Object.keys(POS[t.id]||{}).forEach(id=>{
       const p=t.persons[id];if(!p)return;
       const ln=linksOf(p);if(!ln.length)return;
+      // كل الخطوط تخرج من منتصف الفرد، وتتفرّع بعد خروجها
+      const q=POS[t.id][id];if(!q)return;
+      const baseX = t.ty=='fr' ? t.x+q.x+24 : t.x+q.x+OX[t.id]+W/2;
+      const baseY = t.y+q.y+(t.ty=='fr'?H/2:58+42+H/2);  // منتصف الفرد عمودياً
+      const total=ln.length;
       ln.forEach((l,idx)=>{
         const c=boardTrees().find(x=>x.id==l.br);if(!c||c.hid)return;
         let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];if(!bp)return;
-        let q=POS[t.id][id];if(!q)return;
-        const off=idx*10;
-        const qx = t.ty=='fr' ? q.x+24 : q.x+OX[t.id];
-        const baseX=t.x+qx+(t.ty=='fr'?0:W/2);
-        const baseY=t.y+q.y+(t.ty=='fr'?H/2:58+42);
+        const off = (idx-(total-1)/2)*10;   // تفرّع متناظر حول المنتصف
         const cx=baseX;
         const ty=baseY+off;
+        // نقطة الخروج الموحّدة: نفس نقطة الفرد
+        // نرسم: من الفرد -> نقطة تفريع (بعد 15px) -> المسار
+        const splitX = baseX + (t.ty=='fr' ? -15 : 15);   // خروج بسيط
+        // للتبسيط نستخدم منحنى من نقطة الفرد إلى نقطة الهدف مع إزاحة
         if(c.ty=='fr'){
           const treeL=c.x, treeR=c.x+(TW[c.id]||200), treeT=c.y, treeB=c.y+(TH[c.id]||200);
           const treeCx=c.x+(TW[c.id]||200)/2, treeCy=c.y+(TH[c.id]||200)/2;
@@ -388,18 +390,19 @@ function links(){
             ex = Math.max(treeL+10, Math.min(treeR-10, cx));
             ey = dy>0 ? treeT : treeB;
           }
-          b+=`M${cx} ${ty}Q${cx} ${ey} ${ex} ${ey}`;
+          // منحنى من نقطة الفرد، مع تفرّع طفيف عند الخروج
+          b+=`M${cx} ${baseY}L${splitX} ${baseY}Q${splitX} ${ey} ${ex} ${ey}`;
           return;
         }
-        const tx=c.x+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].x+OX[c.id]:0);
-        const tY=c.y+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].y+58+42:0);
+        const tx=c.x+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].x+OX[c.id]+W/2:0);
+        const tY=c.y+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].y+58+42+H/2:0);
         if(l.rel=='p'){
           const cu=c.unions.find(u=>u.s&&(u.p==bp||u.s==bp)&&POS[c.id][u.p]&&POS[c.id][u.s]);
           let ex=tx,ey=tY+H;if(cu){ex=c.x+OX[c.id]+(POS[c.id][cu.p].x+POS[c.id][cu.s].x)/2;ey=tY+H/2}
-          a+=`M${cx} ${ty}V${ty-V/2}H${ex}V${ey}`;
+          a+=`M${cx} ${baseY}L${splitX} ${baseY}L${splitX} ${ty}L${ex} ${ty}L${ex} ${ey}`;
         }else{
           const rt=tx>cx,sx=cx+(rt?1:-1)*W/2,ex=tx-(rt?1:-1)*W/2,mx=(sx+ex)/2;
-          a+=`M${sx} ${ty}H${mx}V${tY}H${ex}`;
+          a+=`M${cx} ${baseY}L${splitX} ${baseY}L${splitX} ${tY}H${ex}`;
         }
       });
     });
@@ -480,7 +483,6 @@ function addFamP(t,id,a){
     sel=null;ch()
   })
 }
-// عند الإضافة لليسار/اليمين: نضيف إلى of أيضاً (للضمان)
 function addFrP(t,cat,afterId,side){
   const cats=(t.cats||[]).slice();
   const catOpts=cats.map(c=>[c,c]).concat([['__new__','＋ فئة جديدة']]);
