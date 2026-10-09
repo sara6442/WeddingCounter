@@ -44,8 +44,8 @@ button{font:inherit;cursor:pointer;color:inherit}
 .ch{display:flex;gap:5px;flex-wrap:wrap}.ch button,.bt button{background:var(--bg);border:2px solid var(--ln);border-radius:8px;padding:3px 10px}.ch .on,#ok{background:#ffd95a!important;color:#222}
 .bt{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.rd{color:#c33}
 .pc{position:absolute;right:4px;top:1px;font-size:9px;opacity:.7;background:#fff;color:#222;padding:0 3px;border-radius:4px}
-/* عدّاد منتصف الشجرة العلوي مع hover */
-.tcnt{position:absolute;left:50%;top:4px;transform:translateX(-50%);background:var(--card);border:2px solid var(--ln);border-radius:8px 4px 9px 5px;padding:3px 14px;font-size:12px;font-weight:600;direction:rtl;z-index:5;cursor:help}
+/* عدّاد منتصف الشجرة العلوي — في النصف الأعلى */
+.tcnt{position:absolute;left:50%;top:calc(50% - 100px);transform:translateX(-50%);background:var(--card);border:2px solid var(--ln);border-radius:8px 4px 9px 5px;padding:3px 14px;font-size:12px;font-weight:600;direction:rtl;z-index:5;cursor:help;pointer-events:auto}
 .tcnt .pop{display:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:6px;background:var(--card);border:2px solid var(--ln);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:400;line-height:1.7;min-width:180px;text-align:right;white-space:nowrap;box-shadow:0 2px 10px #0003;z-index:10}
 .tcnt:hover .pop{display:block}
 .tcnt .pop b{font-weight:600}
@@ -102,10 +102,10 @@ function lay(t,id){if(memo[id])return memo[id];const B=memo[id]={it:[{i:id,x:0,r
  B.it=it;return B}
 const hsd=(t,id,s)=>t.unions.some(u=>u.p==id&&u.s&&u.side==s);
 function ph(t,id,x,y,pl){const p=t.persons[id];if(p.ph)return'';const cat=p.cat&&p.cat!='none'?`<i class="pc">${({work:'💼',study:'🎓',hood:'🏘️'})[p.cat]||''}</i>`:'';return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}${cat}<b>${esc(p.n)}</b>${p.sk?'<small>مذكور ↩</small>':''}<button data-a="ed">✎</button>${p.of?'':`<button data-a="br" class="${p.br?'on':''}" title="حلقة">${(c=>c&&c.ty=='fr'&&c.hid?'👁':'🌿')(p.br&&S.trees.find(x=>x.id==p.br))}</button>`}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${[...pl].map(k=>`<u class="pl ${k=='t'?'pt':k}" data-a="${k}">+</u>`).join('')}</div>`}
-// عدّاد منتصف الشجرة العلوي مع hover
+// عدّاد الشجرة — يظهر في النصف الأعلى عند hover
 function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
  Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}
-  p.g=='f'?f++:m++; // العدد الكلي بدون المتوفى
+  p.g=='f'?f++:m++;
   if(p.st=='n'){p.g=='f'?noF++:noM++}});
  const mAlive=m-noM,fAlive=f-noF;
  return`<div class="tcnt">عداد<span class="pop"><b>العدد الكلي</b><br><span class="m">ذكور: ${m}</span> · <span class="f">إناث: ${f}</span><br><b>بعد خصم الاعتذار</b><br><span class="m">ذكور: ${mAlive}</span> · <span class="f">إناث: ${fAlive}</span><br><span class="dl">معتذر: ${noM+noF}</span>${dm+df?`<br><span class="dl">متوفى: ${dm+df}</span>`:''}</span></div>`}
@@ -122,11 +122,9 @@ function render(){memo={};KO={};POS={};let h='';
    const kk=u.kids.filter(k=>pos[k]);if(kk.length){const bus=y+H+V/2,xs=kk.map(X);const pp0=t.persons[u.p]||{};if(pp0.ph&&!pp0.br)y0=bus;d+=`M${mx} ${y0}V${bus}M${Math.min(mx,...xs)} ${bus}H${Math.max(mx,...xs)}`;kk.forEach(k=>d+=`M${X(k)} ${bus}V${Y(k)}`)}});
   Object.keys(pos).forEach(id=>{const p=t.persons[id];if(!p)return;my=Math.max(my,pos[id].y);
    ps+=ph(t,id,X(id),Y(id),fr?(p.of?'':'blr'):'tb'+(p.j||hsd(t,id,'L')?'':'l')+(p.j||hsd(t,id,'R')?'':'r'))});
-  // مساحة إضافية أعلى الشجرة للعدّاد
   const padTop=42,hh=(em?190:my+H+58+26)+padTop;
-  // إزاحة الرسم لأسفل بـ padTop
   ps=ps.replace(/top:(\d+(\.\d+)?)px/g,(_,v)=>`top:${+v+padTop}px`);
-  d=''; // إعادة رسم الخطوط بإزاحة
+  d='';
   if(fr)t.order.forEach(f=>{const p=t.persons[f],y=Y(f)+H/2+padTop;[p.L,p.R].forEach(a=>{let pv=f;a.forEach(r=>{const x1=X(pv),x2=X(r);d+=`M${Math.min(x1,x2)+W/2} ${y}H${Math.max(x1,x2)-W/2}`;pv=r})})});
   else t.unions.forEach(u=>{if(!pos[u.p])return;const y=Y(u.p)+padTop;let mx=X(u.p),y0=y+H;
    if(u.s&&pos[u.s]){const a=X(u.p),b=X(u.s);d+=`M${Math.min(a,b)+W/2} ${y+H/2}H${Math.max(a,b)-W/2}`;mx=(a+b)/2;y0=y+H/2}
@@ -287,9 +285,8 @@ $('#tr').addEventListener('click',e=>{const te=e.target.closest('.t[data-t]');if
  else if(k=='hd'){snap();t.hid=1;ch()}
  else addP(t,id,k)});
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform=`translate(${S.v.x}px,${S.v.y}px) scale(${S.v.k})`;
-// سحب: شجرة الأصدقاء تتحرك وحدها، العائلة مع ما يرتبط بها
-function collectLinked(t){if(t.ty=='fr')return new Set([t.id]); // الأصدقاء وحدها
- const out=new Set([t.id]);let changed=true;while(changed){changed=false;S.trees.forEach(x=>{if(out.has(x.id))return;Object.values(x.persons).forEach(p=>{if(p.br&&out.has(p.br)){out.add(x.id);changed=true}});Object.values(x.persons).forEach(p=>{if(out.has(x.id)&&p.br&&!out.has(p.br)){const c=S.trees.find(y=>y.id==p.br);if(c&&c.ty!='fr'){out.add(c.id);changed=true}}})})}return out}
+// كل شجرة تُحرَّك وحدها — لا تُضم أي شجرة أخرى
+function collectLinked(t){return new Set([t.id])}
 bd.addEventListener('pointerdown',e=>{if(e.target.closest('.p,button:not(.mv)'))return;const th=e.target.closest('.th');
  if(th){const t=S.trees.find(x=>x.id==th.parentNode.dataset.t);const linked=collectLinked(t);const positions={};linked.forEach(id=>{const tt=S.trees.find(x=>x.id==id);positions[id]={x:tt.x,y:tt.y,el:document.querySelector(`.t[data-t="${id}"]`)}});
   drag={linked:positions,sx:e.clientX,sy:e.clientY,mode:'tree'}}
@@ -320,7 +317,6 @@ $('#wbsave').onclick=()=>{snap();save();const ts=$('#ts');ts.textContent='✔ ت
 $('#wbload').onclick=()=>{dlg('استرداد اللوحة',[{k:'js',l:'الصق نص JSON المحفوظ سابقاً',t:'area',v:''}],v=>{try{const n=JSON.parse(v.js);if(!Array.isArray(n.trees))throw 0;snap();S=n;tf();ch();const ts=$('#ts');ts.textContent='✔ تم الاسترداد';ts.style.display='block';setTimeout(()=>ts.style.display='none',1500)}catch(x){dlg('نص غير صالح',[],()=>{},null,'حسناً')}},null,'استرداد')};
 $('#wblink').onclick=async()=>{
  try{
-  // ضغط البيانات بـ CompressionStream إذا متاح
   const json=JSON.stringify(S);
   let b64;
   if(typeof CompressionStream!=='undefined'){
@@ -331,7 +327,6 @@ $('#wblink').onclick=async()=>{
    b64='gz:'+b64;
   }else{b64='raw:'+btoa(unescape(encodeURIComponent(json)))}
   const url=location.origin+location.pathname+'#wb='+encodeURIComponent(b64);
-  // انسخ للحافظة
   try{await navigator.clipboard.writeText(url)}catch(e){}
   dlg('رابط مشترك',[{k:'u',l:'انسخ هذا الرابط وأرسله لمن تريد (يفتح نفس اللوحة):',t:'area',v:url}],()=>{},null,'حسناً');
  }catch(e){dlg('تعذّر إنشاء الرابط',[{k:'m',l:'الخطأ: '+(e.message||e),t:'text',v:''}],()=>{},null,'حسناً')}
