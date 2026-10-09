@@ -12,7 +12,7 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:'Marhey
 .th{position:relative;z-index:2;height:34px;display:flex;align-items:center;gap:4px;padding:0 10px;cursor:move;font-weight:600;direction:rtl;user-select:none}.th span{flex:1}
 button{font:inherit;cursor:pointer;color:inherit}
 .th button,.p button{background:none;border:0;padding:0 2px;font-size:13px}
-.p{position:absolute;width:130px;height:56px;background:#fff;color:#222;border:3px solid;border-radius:12px 6px 14px 7px/7px 13px 6px 12px;padding:6px 10px 6px 24px;font-size:14px;display:flex;align-items:center;cursor:pointer}
+.p{position:absolute;width:130px;height:56px;background:#fff;color:#222;border:3px solid;border-radius:12px 6px 14px 7px/7px 13px 6px 12px;padding:6px 10px 6px 24px;font-size:14px;display:flex;align-items:center;cursor:grab}
 .p b{font-weight:600;line-height:1.2;direction:rtl;text-align:right;width:100%;overflow:hidden;max-height:42px}
 .p small{position:absolute;right:4px;bottom:1px;font-size:10px}
 .m{border-color:#9cc3ee}.f{border-color:#f2a9c9}
@@ -28,8 +28,30 @@ button{font:inherit;cursor:pointer;color:inherit}
 .bg{position:absolute;right:-8px;top:-8px;width:20px;height:20px;border-radius:50%;font-style:normal;text-align:center;line-height:20px;font-size:12px;color:#fff;z-index:3}.bg.y{background:#3cb371}.bg.n{background:#e5484d}
 #mb{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:none;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:6px 10px;z-index:40;max-width:94vw}
 #ts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--ink);border:2px solid var(--ln);border-radius:10px;padding:6px 14px;display:none;z-index:60}
-.pl{position:absolute;width:20px;height:20px;line-height:16px;text-align:center;background:#fff;color:#222;border:2px solid #555;border-radius:50%;font-size:15px;display:none;z-index:5;text-decoration:none}
-.p:hover .pl,.p.sel .pl{display:block}.p:hover,.p.sel{z-index:9}
+/* علامات + : تظهر فوراً عند hover وتختفي بعد 250ms */
+.pl{
+  position:absolute;
+  width:20px;height:20px;
+  line-height:16px;
+  text-align:center;
+  background:#fff;
+  color:#222;
+  border:2px solid #555;
+  border-radius:50%;
+  font-size:15px;
+  z-index:5;
+  text-decoration:none;
+  opacity:0;
+  pointer-events:none;
+  visibility:hidden;
+  transition:opacity .12s ease .25s, visibility 0s linear .25s;
+}
+.p:hover .pl,.p.sel .pl{
+  opacity:1;
+  pointer-events:auto;
+  visibility:visible;
+  transition:opacity 0s, visibility 0s;
+}
 .pl.pt{top:-28px;left:50%;transform:translateX(-50%)}
 .pl.b{bottom:-28px;left:50%;transform:translateX(-50%)}
 .pl.l{left:-24px;top:15px}
@@ -81,7 +103,6 @@ button{font:inherit;cursor:pointer;color:inherit}
 #wb .row{display:flex;flex-direction:column;gap:4px}
 #wb .row button{width:100%;background:var(--bg);border:2px solid var(--ln);border-radius:6px;padding:5px 6px;font-size:11px;text-align:center}
 #wb .row button:hover{background:#ffd95a;color:#222}
-/* قائمة "أخرى" الجانبية: تبدأ من نفس سطر زر "أخرى" واللوحات تحت بعضها طوليًا */
 #wbSide{position:fixed;left:150px;top:0;display:none;flex-direction:column;align-items:stretch;gap:4px;background:var(--card);border:2px solid var(--ln);border-radius:10px;padding:8px;font-size:12px;width:180px;max-height:60vh;overflow:auto;z-index:25}
 #wbSide button{display:block;width:100%;flex:none;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:4px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #wbSide button:hover{background:#ffd95a;color:#222}
@@ -120,7 +141,8 @@ button{font:inherit;cursor:pointer;color:inherit}
 const $=s=>document.querySelector(s),W=130,H=56,G=26,V=86;
 let MSON=false,S=null,TW={},KO={},POS={},OX={},TH={},memo,sel=null,drag=null;
 let UNDO=[],UNDO_LOCK=false;
-let LAST_SAVED_SNAP='';   // للكشف عن تعديل اللوحة
+let LAST_SAVED_SNAP='';
+let DRAG_P=null;
 
 const uid=()=>Math.random().toString(36).slice(2,9);
 const LS_KEY='mz2',LS_OLD='mz',LS_BAK='mz_backup';
@@ -131,15 +153,16 @@ function migrateTree(t){
     if(p.br&&!p.links){p.links=[{br:p.br,bp:p.bp,rel:p.rel||'p'}]}
     delete p.br;delete p.bp;delete p.rel;
     if(!Array.isArray(p.links))p.links=[];
+    if(p.dx===undefined)p.dx=0;
+    if(p.dy===undefined)p.dy=0;
     if(t.ty=='fr'){if(!p.L)p.L=[];if(!p.R)p.R=[];if(!p.cat)p.cat='أصدقاء'}
   });
-  if(t.ty=='fr'){if(!t.cats)t.cats=[]}
+  if(t.ty=='fr'){if(!t.cats)t.cats=[];if(!t.rowOrder)t.rowOrder={}}
 }
 function migrate(){
   let raw=null;try{raw=JSON.parse(localStorage.getItem(LS_KEY)||'null')}catch(e){}
   if(raw&&raw.boards&&Array.isArray(raw.boards)&&raw.boards.length){
     raw.boards.forEach(b=>{(b.trees||[]).forEach(migrateTree)});
-    // ترتيب حسب lastOpened
     raw.boards.forEach(b=>{if(!b.lastOpened)b.lastOpened=b.savedAt||Date.now()});
     return raw;
   }
@@ -195,7 +218,7 @@ function ph(t,id,x,y,pl){
   const cat=p.cat?`<i class="pc">${esc(p.cat)}</i>`:'';
   const linkBtn=`<button data-a="br" class="${ln.length?'on':''}" title="ربط بشجرة أخرى">🌿</button>`;
   const eyeBtn=showEye?`<button data-a="eye" title="إظهار/إخفاء شجرة الأصدقاء">👁</button>`:'';
-  return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k=='t'?'pt':k}" data-a="${k}">+</u>`).join('')}</div>`
+  return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" data-t="${t.id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k}" data-a="${k}">+</u>`).join('')}</div>`
 }
 function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
  Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}
@@ -204,8 +227,8 @@ function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
  const mAlive=m-noM,fAlive=f-noF;
  return`<div class="tcnt">عداد<span class="pop"><b>العدد الكلي</b><br><span class="m">ذكور: ${m}</span> · <span class="f">إناث: ${f}</span><br><b>بعد خصم الاعتذار</b><br><span class="m">ذكور: ${mAlive}</span> · <span class="f">إناث: ${fAlive}</span><br><span class="dl">معتذر: ${noM+noF}</span>${dm+df?`<br><span class="dl">متوفى: ${dm+df}</span>`:''}</span></div>`}
 
-/* ============ بناء صفوف شجرة الأصدقاء ============ */
-function buildRowsFr(t,ids){
+function buildRowsFr(t,ids,cat){
+  const order=t.rowOrder&&t.rowOrder[cat];
   const set=new Set(ids);
   const isChild=new Set();
   ids.forEach(id=>{
@@ -237,21 +260,14 @@ function buildRowsFr(t,ids){
     return hasLR||hasOf;
   });
   const rootsAlone=roots.filter(id=>!rootsWithKids.includes(id));
-  rootsWithKids.forEach(r=>{
-    if(visited.has(r))return;
-    const row=orderRow(r);
-    row.forEach(x=>visited.add(x));
-    rows.push(row);
-  });
-  rootsAlone.forEach(r=>{
-    if(visited.has(r))return;
-    rows.push([r]);visited.add(r);
-  });
-  ids.forEach(id=>{
-    if(visited.has(id))return;
-    rows.push([id]);visited.add(id);
-  });
-  return rows;
+  const pushRow=(r)=>{if(visited.has(r))return;const row=rootsWithKids.includes(r)?orderRow(r):[r];row.forEach(x=>visited.add(x));rows.push({root:r,items:row})};
+  if(order&&Array.isArray(order)){
+    order.forEach(r=>{if(set.has(r)&&!visited.has(r))pushRow(r)});
+  }
+  rootsWithKids.forEach(r=>pushRow(r));
+  rootsAlone.forEach(r=>pushRow(r));
+  ids.forEach(id=>{if(!visited.has(id))pushRow(id)});
+  return rows.map(x=>x.items);
 }
 
 function render(){
@@ -264,10 +280,9 @@ function render(){
     const em=!Object.keys(t.persons).length;
 
     if(fr){
-      // ========== شجرة الأصدقاء ==========
       if(!t.cats)t.cats=[];
+      if(!t.rowOrder)t.rowOrder={};
       Object.values(t.persons).forEach(p=>{if(!p.cat)p.cat='أصدقاء'});
-      // توحيد الأقارب المتداخلين: كل قريب يرتبط مباشرة بالصديق الأصلي (على نفس الجهة)
       Object.values(t.persons).forEach(p=>{
         let o=p.of,g=0;
         while(o&&t.persons[o]&&t.persons[o].of&&g++<9)o=t.persons[o].of;
@@ -296,12 +311,11 @@ function render(){
 
       const catData=catsArr.map(c=>{
         const ids=byCat[c]||[];
-        const rows=buildRowsFr(t,ids);
+        const rows=buildRowsFr(t,ids,c);
         const maxRowLen=Math.max(1,...rows.map(r=>r.length));
         const contentW = Math.max(minContentW, maxRowLen*W + (maxRowLen-1)*gapCols);
         return {c,rows,contentW};
       });
-      // maxContentW: أوسع فئة في الشجرة كاملة → كل الصفوف تُوسّط بالنسبة له
       const maxContentW = Math.max(...catData.map(x=>x.contentW), minContentW);
       const CW = maxContentW + gapCatFriend*2;
 
@@ -312,7 +326,6 @@ function render(){
 
         rows.forEach((row,ri)=>{
           const rowW = row.length*W + (row.length-1)*gapCols;
-          // توسيط الصف بالنسبة لـ maxContentW (عرض موحّد لكل الفئات)
           const rowLeft = (maxContentW - rowW)/2;
           row.forEach((id,ci)=>{
             const xFromLeft = gapCatFriend + rowLeft + W/2 + ci*(W+gapCols);
@@ -321,7 +334,7 @@ function render(){
           });
         });
         const catKey=encodeURIComponent(c);
-        extra+=`<div class="cat" style="left:${gapTreeCat}px;top:${cy}px;width:${CW}px;height:${chh}px"><div class="cat-t" data-a="cat-menu" data-cat="${catKey}" data-t="${t.id}">${esc(c)} ✎</div></div>`;
+        extra+=`<div class="cat" style="left:${gapTreeCat}px;top:${cy}px;width:${CW}px;height:${chh}px" data-cat="${catKey}" data-t="${t.id}"><div class="cat-t" data-a="cat-menu" data-cat="${catKey}" data-t="${t.id}">${esc(c)} ✎</div></div>`;
         extra+=`<button class="plu" data-a="addcat-friend" data-cat="${catKey}" data-t="${t.id}" style="left:${gapTreeCat + CW/2}px;top:${cy+chh-catTail/2}px" title="إضافة صديق إلى ${esc(c)}">+</button>`;
         cy += chh + cGap;
       });
@@ -345,11 +358,22 @@ function render(){
       return;
     }
 
-    // ========== شجرة عائلة ==========
     if(em){w=230;ox=20;ps='<button class="big" data-a="first">＋</button>'}
-    else{const b=lay(t,root(t)),r0=Math.min(...b.it.map(a=>a.r)),x0=Math.min(...b.it.map(a=>a.x)),x1=Math.max(...b.it.map(a=>a.x));b.it.forEach(a=>pos[a.i]={x:a.x,y:(a.r-r0)*(H+V)});w=Math.max(x1-x0+W+40,230);ox=20+W/2-x0}
+    else{
+      const b=lay(t,root(t)),r0=Math.min(...b.it.map(a=>a.r)),x0=Math.min(...b.it.map(a=>a.x)),x1=Math.max(...b.it.map(a=>a.x));
+      b.it.forEach(a=>{
+        const p=t.persons[a.i]||{};
+        pos[a.i]={x:a.x+(p.dx||0),y:(a.r-r0)*(H+V)+(p.dy||0)};
+      });
+      const allX=Object.values(pos).map(q=>q.x),allY=Object.values(pos).map(q=>q.y);
+      const minX=Math.min(...allX)-W/2-20,maxX=Math.max(...allX)+W/2+20;
+      const minY=Math.min(...allY),maxY=Math.max(...allY)+H;
+      w=Math.max(maxX-minX,230);ox=-minX;
+      Object.keys(pos).forEach(k=>{pos[k].x-=minX;pos[k].y-=minY;});
+      my=maxY-minY;
+    }
     OX[t.id]=ox;POS[t.id]=pos;const X=i=>pos[i].x+ox,Y=i=>pos[i].y+58;
-    Object.keys(pos).forEach(id=>{const p=t.persons[id];if(!p)return;my=Math.max(my,pos[id].y);
+    Object.keys(pos).forEach(id=>{const p=t.persons[id];if(!p)return;
       ps+=ph(t,id,X(id),Y(id),'tb'+(p.j||hsd(t,id,'L')?'':'l')+(p.j||hsd(t,id,'R')?'':'r'))});
     const padTop=42,hh=(em?190:my+H+58+26)+padTop;
     ps=ps.replace(/top:(\d+(\.\d+)?)px/g,(_,v)=>`top:${+v+padTop}px`);
@@ -369,7 +393,6 @@ function render(){
     let inner='';
     Object.keys(pos).forEach(id=>{
       const p=t.persons[id];if(!p)return;
-      // الصديق الأصلي: + على الجهتين. القريب: + على جهته الخارجية فقط ليتسلسل الربط
       let pl='lr';
       if(p.of&&t.persons[p.of])pl=((t.persons[p.of].L||[]).includes(id))?'l':'r';
       inner+=ph(t,id,pos[id].x+gapTreeCat,pos[id].y,pl);
@@ -378,29 +401,10 @@ function render(){
     if(anchor)anchor.outerHTML=inner;
   });
 
-  alignTrees();links();cnt();msUi();renderWbList();renderWbName();
+  links();cnt();msUi();renderWbList();renderWbName();
 }
 function msUi(){document.body.classList.toggle('ms',MSON);$('#ms').classList.toggle('on',MSON);const b=$('#mb');b.style.display=MSON?'flex':'none';
  if(MSON)b.innerHTML=`<b>${MS.size} محدد</b><button class="tb" data-m="y">✔ أكّد الحضور</button><button class="tb" data-m="n">✖ اعتذر</button><button class="tb" data-m="0">↺ بلا حالة</button><button class="tb" data-m="all">تحديد الكل</button><button class="tb" data-m="del">🗑 حذف</button><button class="tb" data-m="x">إنهاء</button>`}
-/* يوحّد مستوى الأبناء: الابن المرتبط بوالدين في شجرة أخرى يُوضع صفّه تحت صف الوالدين بالضبط (والإخوة على صف واحد) */
-function alignTrees(){
-  for(let pass=0;pass<4;pass++){let moved=false;
-    boardTrees().forEach(t=>{
-      if(!t||t.hid||t.ty=='fr'||!POS[t.id])return;
-      for(const id of Object.keys(POS[t.id])){
-        const p=t.persons[id];if(!p)continue;
-        const l=linksOf(p).find(x=>{const c=boardTrees().find(z=>z.id==x.br);return c&&c.ty!='fr'&&!c.hid&&POS[c.id]});
-        if(!l)continue;
-        const c=boardTrees().find(z=>z.id==l.br);let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];
-        const q=POS[t.id][id],r=POS[c.id][bp];if(!q||!r)continue;
-        const want=(l.rel=='p'&&!p.ph)?c.y+r.y+H+V-q.y:c.y+r.y-q.y;
-        if(Math.abs(want-t.y)>0.5){t.y=want;const el=document.querySelector('.t[data-t="'+t.id+'"]');if(el)el.style.top=want+'px';moved=true}
-        break;
-      }
-    });
-    if(!moved)break;
-  }
-}
 function links(){
   let a='',b='';
   boardTrees().forEach(t=>{
@@ -409,16 +413,13 @@ function links(){
       const p=t.persons[id];if(!p)return;
       const ln=linksOf(p);if(!ln.length)return;
       const q=POS[t.id][id];if(!q)return;
-      // شجرة العائلة: الرابط يخرج من منتصف الحافة العلوية للمستطيل (pos.x هو مركز المستطيل)
-      // شجرة الأصدقاء: يخرج من منتصف الحافة اليمنى
       const isFr = t.ty=='fr';
       const baseX = isFr ? t.x+q.x+24+W/2 : t.x+q.x+OX[t.id];
-      const baseY = isFr ? t.y+q.y+H/2     : t.y+q.y+58+42;   // في شجرة العائلة: أعلى المستطيل
+      const baseY = isFr ? t.y+q.y+H/2     : t.y+q.y+58+42;
       const total=ln.length;
       ln.forEach((l,idx)=>{
         const c=boardTrees().find(x=>x.id==l.br);if(!c||c.hid)return;
         let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];if(!bp)return;
-        // إزاحة أفقية صغيرة عند تعدد الروابط من نفس الفرد
         const off = (idx-(total-1)/2)*12;
         const cx = baseX + off;
         const cy = baseY;
@@ -427,18 +428,11 @@ function links(){
           const treeCx=c.x+(TW[c.id]||200)/2, treeCy=c.y+(TH[c.id]||200)/2;
           let ex,ey;
           const dx=treeCx-cx, dy=treeCy-cy;
-          if(Math.abs(dx)>Math.abs(dy)){
-            ex = dx>0 ? treeL : treeR;
-            ey = Math.max(treeT+10, Math.min(treeB-10, cy));
-          } else {
-            ex = Math.max(treeL+10, Math.min(treeR-10, cx));
-            ey = dy>0 ? treeT : treeB;
-          }
-          // خروج لأعلى 15px ثم انحناء
+          if(Math.abs(dx)>Math.abs(dy)){ex = dx>0 ? treeL : treeR;ey = Math.max(treeT+10, Math.min(treeB-10, cy));}
+          else{ex = Math.max(treeL+10, Math.min(treeR-10, cx));ey = dy>0 ? treeT : treeB;}
           b+=`M${cx} ${cy}V${cy-15}Q${cx} ${ey} ${ex} ${ey}`;
           return;
         }
-        // مركز مستطيل الهدف ونقطة نزول الوالدين (منتصف خط الزواج أو أسفل المستطيل)
         const pr=POS[c.id]&&POS[c.id][bp];
         const tx=c.x+(pr?pr.x+OX[c.id]:0);
         const tY=c.y+(pr?pr.y+58+42:0);
@@ -446,7 +440,6 @@ function links(){
           const cu=c.unions.find(u=>u.s&&(u.p==bp||u.s==bp)&&POS[c.id][u.p]&&POS[c.id][u.s]);
           let ex=tx,ey=tY+H;if(cu){ex=c.x+OX[c.id]+(POS[c.id][cu.p].x+POS[c.id][cu.s].x)/2;ey=tY+H/2}
           const tBus=tY+H+V/2;
-          // خط واحد طولي من الوالدين ثم خط عرضي مشترك ثم نزول لكل ابن (الوالدان المخفيان: ينتهي عند خط الأبناء)
           a+=p.ph?`M${ex} ${ey}V${tBus}H${cx}V${cy+H+V/2}`:`M${ex} ${ey}V${tBus}H${cx}V${cy}`;
         }else{
           a+=`M${cx} ${cy}V${cy-15}H${tx}V${tY}`;
@@ -489,14 +482,14 @@ const ap=(p,v)=>{p.n=(v.n||'').trim()||'بدون اسم';p.g=v.g||'m';p.d=+v.d;p
  else if(p.st===undefined)p.st='y';
 };
 
-function mkFam(v,x,y){const id=uid(),pid=uid(),pp={id:pid,j:0,links:[]};ap(pp,v);
+function mkFam(v,x,y){const id=uid(),pid=uid(),pp={id:pid,j:0,links:[],dx:0,dy:0};ap(pp,v);
  const t={id,ty:'fam',name:(v.tn||'').trim()||'شجرة العائلة',x,y,hid:0,persons:{[pid]:pp},unions:[]};
  boardTrees().push(t);return t}
-function mkFr(v,x,y){const id=uid(),pid=uid(),pp={id:pid,j:0,links:[],L:[],R:[],cat:v.cat||'أصدقاء'};ap(pp,v);
- const t={id,ty:'fr',name:(v.tn||'').trim()||'شجرة الأصدقاء',x,y,hid:0,persons:{[pid]:pp},unions:[],cats:[pp.cat]};
+function mkFr(v,x,y){const id=uid(),pid=uid(),pp={id:pid,j:0,links:[],L:[],R:[],cat:v.cat||'أصدقاء',dx:0,dy:0};ap(pp,v);
+ const t={id,ty:'fr',name:(v.tn||'').trim()||'شجرة الأصدقاء',x,y,hid:0,persons:{[pid]:pp},unions:[],cats:[pp.cat],rowOrder:{}};
  boardTrees().push(t);return t}
 function emptyT(ty){const k=boardView().k;const t={id:uid(),ty:ty||'fam',name:ty=='fr'?'شجرة أصدقاء':'شجرة عائلة',x:(-boardView().x+innerWidth/2)/k-120,y:(-boardView().y+innerHeight/3)/k-60,hid:0,persons:{},unions:[]};
- if(ty=='fr'){t.cats=[];t.hid=1}
+ if(ty=='fr'){t.cats=[];t.rowOrder={};t.hid=1}
  boardTrees().push(t);ch();return t}
 
 function addFamP(t,id,a){
@@ -517,11 +510,11 @@ function addFamP(t,id,a){
     snap();
     const role=v.role||(roles&&roles[0][0]);
     if(a=='t'&&role=='p'&&v.loc=='out'){const nt=mkFam(Object.assign({},v,{}),t.x,t.y-220);(tgt.links=tgt.links||[]).push({br:nt.id,bp:Object.keys(nt.persons)[0],rel:'p'});sel=null;ch();return}
-    const n={id:uid(),j:0,links:[]};ap(n,v);t.persons[n.id]=n;
+    const n={id:uid(),j:0,links:[],dx:0,dy:0};ap(n,v);t.persons[n.id]=n;
     if(a=='t'){
       if(role=='p'){if(!pu)t.unions.push({id:uid(),p:n.id,s:null,side:'R',kids:[id]});else if(t.persons[pu.p].ph){delete t.persons[pu.p];pu.p=n.id}else{pu.s=n.id;pu.side='L';n.j=1}}
       else if(pu)pu.kids.splice(pu.kids.indexOf(id)+1,0,n.id);
-      else{const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,links:[],ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:[id,n.id]})}
+      else{const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,links:[],dx:0,dy:0,ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:[id,n.id]})}
     }
     else if(a=='b'){let u=roles?t.unions.find(x=>x.id==role):us[0];if(!u){u={id:uid(),p:id,s:null,side:'R',kids:[]};t.unions.push(u)}u.kids.push(n.id)}
     else{const side=a=='l'?'L':'R';n.j=1;
@@ -530,7 +523,6 @@ function addFamP(t,id,a){
     sel=null;ch()
   })
 }
-/* ============ إضافة صديق لشجرة الأصدقاء ============ */
 function addFrP(t,cat,afterId,side){
   const cats=(t.cats||[]).slice();
   const catOpts=cats.map(c=>[c,c]).concat([['__new__','＋ فئة جديدة']]);
@@ -547,7 +539,6 @@ function addFrP(t,cat,afterId,side){
   ];
   dlg('إضافة '+(afterId?'قريب مربوط ('+(side=='L'?'يسار':'يمين')+')':'صديق'+(cat?' إلى «'+esc(cat)+'»':'')),F,v=>{
     snap();
-    // القريب يأخذ فئة الصديق الأصلي دائماً
     const a0=afterId&&t.persons[afterId];
     const rootId=a0?(a0.of&&t.persons[a0.of]?a0.of:afterId):null;
     const host=rootId?t.persons[rootId]:null;
@@ -555,13 +546,12 @@ function addFrP(t,cat,afterId,side){
     if(c=='__new__')c=(v.newcat||'').trim();
     if(!c){alert('الفئة إلزامية');return}
     if(!t.cats)t.cats=[];if(!t.cats.includes(c))t.cats.push(c);
-    const n={id:uid(),j:0,links:[],L:[],R:[],cat:c,of:rootId||null};ap(n,v);
+    const n={id:uid(),j:0,links:[],L:[],R:[],cat:c,of:rootId||null,dx:0,dy:0};ap(n,v);
     if(v.rel=='mother'||v.rel=='wife')n.g='f';
     if(v.rel=='father'||v.rel=='husband')n.g='m';
     if(!n.of)delete n.of;
     t.persons[n.id]=n;
     if(host){
-      // الإضافة دائماً مربوطة بالصديق الأصلي: من الصديق نفسه = الأقرب، ومن قريب = بعده إلى الخارج
       const lst=side=='L'?(host.L=host.L||[]):(host.R=host.R||[]);
       const i=a0.of?lst.indexOf(afterId)+1:0;
       lst.splice(i,0,n.id);
@@ -577,7 +567,7 @@ function addFirstFriend(t){
   dlg('إضافة أول صديق',F,v=>{
     snap();
     const c=(v.cat||'').trim();if(!c){alert('الفئة إلزامية');return}
-    const id=uid();t.persons[id]={id,j:0,links:[],L:[],R:[],cat:c,n:(v.n||'').trim()||'بدون اسم',g:v.g||'m',d:0,pr:1,st:'y',sk:false};
+    const id=uid();t.persons[id]={id,j:0,links:[],L:[],R:[],cat:c,n:(v.n||'').trim()||'بدون اسم',g:v.g||'m',d:0,pr:1,st:'y',sk:false,dx:0,dy:0};
     t.cats=[c];ch()
   });
 }
@@ -618,10 +608,17 @@ function delCat(t,cat){
 }
 
 function brDlg(t,p){
+  $('#dl').innerHTML='<h3>🌿 ربط «'+esc(p.n)+'»</h3><div class="bt" style="flex-direction:column"><button id="b1">🔗 بشجرة أخرى</button><button id="b2">👥 بفرد من نفس الشجرة</button><button id="cx">إلغاء</button></div>';
+  $('#ov').style.display='flex';
+  $('#b1').onclick=()=>{$('#ov').style.display='none';brOtherTree(t,p)};
+  $('#b2').onclick=()=>{$('#ov').style.display='none';brSameTree(t,p)};
+  $('#cx').onclick=()=>{$('#ov').style.display='none'};
+}
+function brOtherTree(t,p){
   const ot=boardTrees().filter(x=>x!=t&&Object.keys(x.persons).length);
   const o=[['new','＋ شجرة جديدة']].concat(ot.map(x=>[x.id,x.name]));
   const tg=v=>v.sel=='new'?{ty:v.ty}:ot.find(x=>x.id==v.sel);
-  dlg('🌿 إضافة رابط لـ «'+esc(p.n)+'»',
+  dlg('🌿 ربط بشجرة أخرى',
     [{k:'sel',l:'اربط بـ',t:'sel',o,v:'new'}].concat(
       ot.map(x=>({k:'pp'+x.id,l:'اختر الفرد المرتبط في «'+esc(x.name)+'»',t:'sel',o:Object.values(x.persons).map(q=>[q.id,q.n]),v:Object.keys(x.persons)[0],h:v=>v.sel!=x.id})),
       [{k:'rel',l:'نوع علاقة الشجرة الجديدة',o:[['p','والدان (الخط من الأعلى)'],['s','إخوة (خط عرضي)']],v:'p',h:v=>(tg(v)||{}).ty=='fr'}],
@@ -637,6 +634,38 @@ function brDlg(t,p){
         if(v.ty=='fr')nt.hid=1;
         p.links=p.links||[];p.links.push({br:nt.id,bp:Object.keys(nt.persons)[0],rel:'p'});ch()
       }
+    },null,'ربط');
+}
+function brSameTree(t,p){
+  const others=Object.values(t.persons).filter(x=>x.id!=p.id&&!x.ph);
+  if(!others.length){dlg('لا يوجد',[{k:'m',l:'لا يوجد أفراد آخرون في هذه الشجرة.',t:'text',v:''}],()=>{},null,'حسناً');return}
+  dlg('👥 ربط «'+esc(p.n)+'» بفرد من نفس الشجرة',
+    [{k:'other',l:'اختر الفرد',t:'sel',o:others.map(x=>[x.id,x.n]),v:others[0].id},
+     {k:'rel',l:'نوع العلاقة',o:[['w','زوج/زوجة'],['p','والد/والدة']],v:'w'}],
+    v=>{
+      snap();
+      const other=t.persons[v.other];if(!other)return;
+      if(v.rel=='w'){
+        const u=t.unions.find(x=>(x.p==p.id&&x.s==other.id)||(x.p==other.id&&x.s==p.id));
+        if(!u){
+          const side=hsd(t,p.id,'R')?'L':'R';
+          t.unions.push({id:uid(),p:p.id,s:other.id,side:side,kids:[]});
+          other.j=1;
+        }
+      }else if(v.rel=='p'){
+        const u=t.unions.find(x=>x.kids.includes(p.id)&&(x.p==other.id||x.s==other.id));
+        if(!u){
+          const existing=PU(t,p.id);
+          if(existing){
+            if(t.persons[existing.p].ph){existing.p=other.id}
+            else if(!existing.s){existing.s=other.id;existing.side='L';other.j=1}
+            else{alert('الفرد لديه والدان بالفعل');return}
+          }else{
+            t.unions.push({id:uid(),p:other.id,s:null,side:'R',kids:[p.id]});
+          }
+        }
+      }
+      ch()
     },null,'ربط');
 }
 function eyeToggle(p){
@@ -658,9 +687,9 @@ function dupT(t){const c=JSON.parse(JSON.stringify(t)),m={},mp=i=>m[i]||(m[i]=ui
  Object.values(c.persons).forEach(p=>{p.id=mp(p.id);p.links=[];if(p.L)p.L=p.L.map(mp);if(p.R)p.R=p.R.map(mp);if(p.of)p.of=mp(p.of);np[p.id]=p});c.persons=np;
  c.unions.forEach(u=>{u.id=uid();u.p=u.p&&mp(u.p);u.s=u.s&&mp(u.s);u.kids=u.kids.map(mp)});
  snap();boardTrees().push(c);ch()}
-function dupP(t,id){const p=t.persons[id];if(!p)return;const n=Object.assign({},p,{id:uid(),links:[],n:p.n+' (نسخة)'});delete n.st;
+function dupP(t,id){const p=t.persons[id];if(!p)return;const n=Object.assign({},p,{id:uid(),links:[],n:p.n+' (نسخة)',dx:0,dy:0});delete n.st;
  if(t.ty=='fr'){n.of=p.of;n.L=[];n.R=[];if(p.of){const f=t.persons[p.of];if(f){(f.R=f.R||[]).push(n.id)}}}
- else{n.j=0;const u=PU(t,id);if(u)u.kids.splice(u.kids.indexOf(id)+1,0,n.id);else{const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,links:[],ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:[id,n.id]})}}
+ else{n.j=0;const u=PU(t,id);if(u)u.kids.splice(u.kids.indexOf(id)+1,0,n.id);else{const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,links:[],dx:0,dy:0,ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:[id,n.id]})}}
  snap();t.persons[n.id]=n;ch()}
 
 async function aiDlg(t,me){if(!me||me.ph)return;const sm=window.claude&&window.claude.use?await window.claude.use('sample'):null;
@@ -690,13 +719,13 @@ function parseQuick(txt){const R={F:null,M:null,sib:[],sp:[],kids:[]},ppl=[],fr=
  if(ppl.length){if(R.F||R.M)un.push({p:R.F||R.M,s:R.F&&R.M?R.M:null,kids:['me'].concat(R.sib)});else if(R.sib.length)un.push({p:null,s:null,kids:['me'].concat(R.sib)});
   if(R.sp.length)R.sp.forEach((s,i)=>un.push({p:'me',s:s,kids:i?[]:R.kids}));else if(R.kids.length)un.push({p:'me',s:null,kids:R.kids})}
  return{people:ppl,unions:un,friends:fr}}
-function addFriends(ft,list){let first=null;list.forEach(o=>{const f={id:uid(),j:0,links:[],n:o.n,g:o.g,d:o.d,pr:o.d?0:o.pr,st:o.d?undefined:(o.st||'y'),sk:false,cat:o.cat||'أصدقاء',L:[],R:[]};ft.persons[f.id]=f;if(!ft.cats.includes(f.cat))ft.cats.push(f.cat);first=first||f.id;
-  o.rel.forEach((r,i)=>{const q={id:uid(),j:0,links:[],n:r.n,g:r.g,d:r.d,pr:r.d?0:r.pr,st:r.d?undefined:(r.st||'y'),sk:false,cat:f.cat,of:f.id,L:[],R:[]};ft.persons[q.id]=q;f[i%2?'L':'R'].push(q.id)})});return first}
+function addFriends(ft,list){let first=null;list.forEach(o=>{const f={id:uid(),j:0,links:[],n:o.n,g:o.g,d:o.d,pr:o.d?0:o.pr,st:o.d?undefined:(o.st||'y'),sk:false,cat:o.cat||'أصدقاء',L:[],R:[],dx:0,dy:0};ft.persons[f.id]=f;if(!ft.cats.includes(f.cat))ft.cats.push(f.cat);first=first||f.id;
+  o.rel.forEach((r,i)=>{const q={id:uid(),j:0,links:[],n:r.n,g:r.g,d:r.d,pr:r.d?0:r.pr,st:r.d?undefined:(r.st||'y'),sk:false,cat:f.cat,of:f.id,L:[],R:[],dx:0,dy:0};ft.persons[q.id]=q;f[i%2?'L':'R'].push(q.id)})});return first}
 function aiApply(t,me,D){const map={me:me.id},made=[];
- (D.people||[]).forEach(q=>{if(!q||!q.id||q.id=='me')return;const n={id:uid(),j:0,links:[],n:String(q.n||'؟').trim(),g:q.g=='f'?'f':'m',d:q.d?1:0,pr:q.d?0:([1,2,3].includes(+q.pr)?+q.pr:1),st:q.d?undefined:(q.st||'y'),sk:false};map[q.id]=n.id;t.persons[n.id]=n;made.push(n.id)});
+ (D.people||[]).forEach(q=>{if(!q||!q.id||q.id=='me')return;const n={id:uid(),j:0,links:[],n:String(q.n||'؟').trim(),g:q.g=='f'?'f':'m',d:q.d?1:0,pr:q.d?0:([1,2,3].includes(+q.pr)?+q.pr:1),st:q.d?undefined:(q.st||'y'),sk:false,dx:0,dy:0};map[q.id]=n.id;t.persons[n.id]=n;made.push(n.id)});
  if(t.ty=='fr'){made.forEach(id=>{const n=t.persons[id];n.cat='أصدقاء';if(!t.cats.includes('أصدقاء'))t.cats.push('أصدقاء')});if(D.friends&&D.friends.length)addFriends(t,D.friends);return}
  (D.unions||[]).forEach(u=>{let P=map[u.p],S2=u.s&&map[u.s],K=(u.kids||[]).map(k=>map[k]).filter(Boolean);if(!P){P=S2;S2=null}
-  if(!P){const k0=K.find(k=>PU(t,k));if(k0){const u0=PU(t,k0);K.forEach(k=>{if(!PU(t,k))u0.kids.push(k)})}else if(K.length>1){const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,links:[],ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:K})}return}
+  if(!P){const k0=K.find(k=>PU(t,k));if(k0){const u0=PU(t,k0);K.forEach(k=>{if(!PU(t,k))u0.kids.push(k)})}else if(K.length>1){const h={id:uid(),n:'؟',g:'m',d:0,pr:0,sk:false,j:0,links:[],dx:0,dy:0,ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:K})}return}
   const kid=K.find(k=>PU(t,k));
   if(kid){const u0=PU(t,kid);K.forEach(k=>{if(!PU(t,k)&&k!=u0.p&&k!=u0.s)u0.kids.push(k)});
    if(t.persons[u0.p].ph){const o=u0.p;u0.p=P;delete t.persons[o];S2=S2&&S2!=P?S2:null;if(S2&&!u0.s){u0.s=S2;t.persons[S2].j=1}}
@@ -708,7 +737,7 @@ function aiApply(t,me,D){const map={me:me.id},made=[];
   if(sp&&side)t.persons[sp].j=1;t.unions.push({id:uid(),p,s:sp&&side?sp:null,side:side||'R',kids:K})});
  made.forEach(id=>{if(!t.unions.some(u=>u.p==id||u.s==id||u.kids.includes(id)))delete t.persons[id]});
  if(D.friends&&D.friends.length){let ft=linksOf(me).map(l=>boardTrees().find(x=>x.id==l.br&&x.ty=='fr')).find(Boolean);const nw=!ft;
-  if(nw){ft={id:uid(),ty:'fr',name:'أصدقاء '+me.n,x:t.x+60,y:t.y+(TH[t.id]||200)+70,hid:1,persons:{},unions:[],cats:[]};boardTrees().push(ft)}
+  if(nw){ft={id:uid(),ty:'fr',name:'أصدقاء '+me.n,x:t.x+60,y:t.y+(TH[t.id]||200)+70,hid:1,persons:{},unions:[],cats:[],rowOrder:{}};boardTrees().push(ft)}
   const f0=addFriends(ft,D.friends);if(nw){me.links=me.links||[];me.links.push({br:ft.id,bp:f0,rel:'p'})}}}
 
 $('#tr').addEventListener('click',e=>{
@@ -752,16 +781,80 @@ $('#tr').addEventListener('click',e=>{
     if(k=='t'||k=='b'||k=='l'||k=='r'){addFamP(t,id,k);return}
   }
 });
-function firstFam(t){dlg('إضافة أول فرد',pf(B()),v=>{snap();const n={id:uid(),j:0,links:[]};ap(n,v);t.persons[n.id]=n;ch()})}
+function firstFam(t){dlg('إضافة أول فرد',pf(B()),v=>{snap();const n={id:uid(),j:0,links:[],dx:0,dy:0};ap(n,v);t.persons[n.id]=n;ch()})}
 
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform='translate('+boardView().x+'px,'+boardView().y+'px) scale('+boardView().k+')';
-bd.addEventListener('pointerdown',e=>{if(e.target.closest('.p,button:not(.mv),.plu,.cat-t'))return;const th=e.target.closest('.th');
- if(th){const t=boardTrees().find(x=>x.id==th.parentNode.dataset.t);if(!t)return;const positions={};positions[t.id]={x:t.x,y:t.y,el:document.querySelector('.t[data-t="'+t.id+'"]')};snap();drag={linked:positions,sx:e.clientX,sy:e.clientY,mode:'tree'}}
- else drag={pan:1,sx:e.clientX,sy:e.clientY,a:boardView().x,b:boardView().y};try{bd.setPointerCapture(e.pointerId)}catch(_){}});
-bd.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
- if(drag.pan){const v=boardView();v.x=drag.a+dx;v.y=drag.b+dy;tf()}
- else if(drag.mode=='tree'){const k=boardView().k;Object.keys(drag.linked).forEach(id=>{const o=drag.linked[id],tt=boardTrees().find(x=>x.id==id);if(!tt)return;tt.x=o.x+dx/k;tt.y=o.y+dy/k;if(o.el){o.el.style.left=tt.x+'px';o.el.style.top=tt.y+'px'}});links()}});
-const up=()=>{if(drag){const m=drag.mode;drag=null;save();if(m=='tree')render()}};bd.addEventListener('pointerup',up);bd.addEventListener('pointercancel',up);
+
+function descendants(t,id){
+  const out=new Set();
+  const walk=(x)=>{t.unions.filter(u=>u.p==x||u.s==x).forEach(u=>{u.kids.forEach(k=>{if(!out.has(k)){out.add(k);walk(k)}})})};
+  walk(id);return out;
+}
+bd.addEventListener('pointerdown',e=>{
+  const th=e.target.closest('.th');
+  if(th){
+    const t=boardTrees().find(x=>x.id==th.parentNode.dataset.t);if(!t)return;
+    snap();
+    const positions={};positions[t.id]={x:t.x,y:t.y,el:document.querySelector('.t[data-t="'+t.id+'"]')};
+    drag={linked:positions,sx:e.clientX,sy:e.clientY,mode:'tree'};
+    try{bd.setPointerCapture(e.pointerId)}catch(_){}
+    return;
+  }
+  const pe=e.target.closest('.p');
+  if(pe && !e.target.closest('button')){
+    const tid=pe.dataset.t,pids=pe.dataset.i;
+    const t=boardTrees().find(x=>x.id==tid);
+    if(t&&t.ty!=='fr'){
+      const p=t.persons[pids];if(!p)return;
+      const ids=new Set([pids,...descendants(t,pids)]);
+      drag={mode:'person',sx:e.clientX,sy:e.clientY,tid,pid:pids,ids,orig:{}};
+      ids.forEach(i=>{const pp=t.persons[i];if(pp)drag.orig[i]={dx:pp.dx||0,dy:pp.dy||0}});
+      DRAG_P={moved:false};
+      try{bd.setPointerCapture(e.pointerId)}catch(_){}
+      return;
+    }
+  }
+  if(e.target.closest('.p,button:not(.mv),.plu,.cat-t'))return;
+  drag={pan:1,sx:e.clientX,sy:e.clientY,a:boardView().x,b:boardView().y};
+  try{bd.setPointerCapture(e.pointerId)}catch(_){}
+});
+bd.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
+  if(drag.pan){const v=boardView();v.x=drag.a+dx;v.y=drag.b+dy;tf();return}
+  if(drag.mode==='tree'){
+    const k=boardView().k;
+    Object.keys(drag.linked).forEach(id=>{
+      const o=drag.linked[id],tt=boardTrees().find(x=>x.id==id);if(!tt)return;
+      tt.x=o.x+dx/k;tt.y=o.y+dy/k;
+      if(o.el){o.el.style.left=tt.x+'px';o.el.style.top=tt.y+'px'}
+    });
+    links();return;
+  }
+  if(drag.mode==='person'){
+    const k=boardView().k;
+    const ndx=dx/k,ndy=dy/k;
+    if(Math.abs(dx)>3||Math.abs(dy)>3){DRAG_P.moved=true}
+    if(!DRAG_P.moved)return;
+    const t=boardTrees().find(x=>x.id==drag.tid);if(!t)return;
+    drag.ids.forEach(i=>{
+      const p=t.persons[i];if(!p)return;
+      p.dx=(drag.orig[i]?.dx||0)+ndx;
+      p.dy=(drag.orig[i]?.dy||0)+ndy;
+    });
+    render();
+    return;
+  }
+});
+const up=()=>{
+  if(!drag)return;
+  const mode=drag.mode;
+  if(mode==='person'&&DRAG_P&&DRAG_P.moved){snap()}
+  drag=null;DRAG_P=null;save();
+  if(mode==='tree'||mode==='person')render();
+};
+bd.addEventListener('pointerup',up);
+bd.addEventListener('pointercancel',up);
 function zoom(f,mx,my){const k0=boardView().k,k=Math.min(2,Math.max(.25,k0*f));const v=boardView();v.x=mx-(mx-v.x)*k/k0;v.y=my-(my-v.y)*k/k0;v.k=k;tf();save()}
 bd.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.1:.9,e.clientX,e.clientY)},{passive:false});
 $('#zi').onclick=()=>zoom(1.2,innerWidth/2,innerHeight/2);$('#zo').onclick=()=>zoom(.83,innerWidth/2,innerHeight/2);
@@ -793,34 +886,20 @@ $('#bk').onclick=()=>dlg('نسخ احتياطي',[{k:'js',l:'انسخ النص �
   else throw 0;
   tf();ch()}catch(x){dlg('نص غير صالح',[],()=>{},null,'حسناً')}},null,'استيراد');
 
-/* ============ إدارة المناسبات ============ */
-function orderedBoards(){
-  // ترتيب حسب lastOpened (الأحدث أولاً)
-  return S.boards.slice().sort((a,b)=>(b.lastOpened||0)-(a.lastOpened||0));
-}
+function orderedBoards(){return S.boards.slice().sort((a,b)=>(b.lastOpened||0)-(a.lastOpened||0))}
 function renderWbName(){const el=$('#wbName');const b=curBoard();el.textContent=b&&b.name?b.name:'—'}
 function renderWbList(){
   const box=$('#wbList');
   const ordered=orderedBoards();
   const cur=curBoard();
-  // الحالية أولاً دائماً
-  const first=cur;
-  // الثانية: أعلى lastOpened بعد الحالية (لو كان هناك > 1)
   const rest=ordered.filter(b=>b.id!=cur.id);
   const second=rest[0];
   const others=rest.slice(1);
   let h='';
-  if(first){
-    h+=`<button data-bid="${first.id}" class="cur">${esc(first.name||'(بدون اسم)')}</button>`;
-  }
-  if(second){
-    h+=`<button data-bid="${second.id}">${esc(second.name||'(بدون اسم)')}</button>`;
-  }
-  if(others.length>0){
-    h+=`<button id="wbOtherBtn" class="wbOther">أخرى ▸ (${others.length})</button>`;
-  }
+  if(cur)h+=`<button data-bid="${cur.id}" class="cur">${esc(cur.name||'(بدون اسم)')}</button>`;
+  if(second)h+=`<button data-bid="${second.id}">${esc(second.name||'(بدون اسم)')}</button>`;
+  if(others.length>0)h+=`<button id="wbOtherBtn" class="wbOther">أخرى ▸ (${others.length})</button>`;
   box.innerHTML=h;
-  // إخفاء القائمة الجانبية عند إعادة الرسم
   const side=$('#wbSide');side.style.display='none';side.innerHTML='';
 }
 function switchTo(bid){
@@ -832,18 +911,12 @@ function switchTo(bid){
     $('#ov').style.display='flex';
     $('#ok').onclick=()=>{$('#ov').style.display='none';doSwitch(bid)};
     $('#cx').onclick=()=>{$('#ov').style.display='none'};
-  }else{
-    doSwitch(bid);
-  }
+  }else doSwitch(bid);
 }
 function doSwitch(bid){
-  const b=curBoard();
-  if(b){b.savedAt=Date.now()}
-  save();
+  const b=curBoard();if(b)b.savedAt=Date.now();save();
   S.current=bid;
-  const nb=curBoard();
-  if(nb){nb.lastOpened=Date.now()}
-  save();
+  const nb=curBoard();if(nb)nb.lastOpened=Date.now();save();
   LAST_SAVED_SNAP=JSON.stringify(nb);
   MS.clear();sel=null;tf();render();
 }
@@ -853,10 +926,9 @@ $('#wbList').onclick=e=>{
     const side=$('#wbSide');
     if(side.style.display==='flex'){side.style.display='none';return}
     const cur=curBoard();
-    const others=orderedBoards().filter(b=>b.id!=cur.id).slice(1);   // احذف الحالية والثانية
+    const others=orderedBoards().filter(b=>b.id!=cur.id).slice(1);
     side.innerHTML=others.map(b=>`<button data-bid="${b.id}">${esc(b.name||'(بدون اسم)')}</button>`).join('');
     side.style.display='flex';
-    // ابدأ من نفس سطر زر "أخرى"، واللوحات طوليًا تحت بعضها
     const r=other.getBoundingClientRect();
     side.style.left=(r.right+10)+'px';
     side.style.top=r.top+'px';
@@ -864,17 +936,10 @@ $('#wbList').onclick=e=>{
     return;
   }
   const b=e.target.closest('button[data-bid]');
-  if(!b)return;
-  if(b.dataset.bid==S.current)return;
+  if(!b)return;if(b.dataset.bid==S.current)return;
   switchTo(b.dataset.bid);
 };
-$('#wbSide').onclick=e=>{
-  const b=e.target.closest('button[data-bid]');if(!b)return;
-  const side=$('#wbSide');side.style.display='none';
-  const b2=curBoard();
-  const hasChange=JSON.stringify(b2)!==LAST_SAVED_SNAP;
-  if(hasChange){switchTo(b.dataset.bid)}else{doSwitch(b.dataset.bid)}
-};
+$('#wbSide').onclick=e=>{const b=e.target.closest('button[data-bid]');if(!b)return;const side=$('#wbSide');side.style.display='none';const b2=curBoard();const hasChange=JSON.stringify(b2)!==LAST_SAVED_SNAP;if(hasChange){switchTo(b.dataset.bid)}else{doSwitch(b.dataset.bid)}};
 $('#wbName').onclick=()=>{const b=curBoard();dlg('اسم المناسبة',[{k:'n',l:'الاسم',t:'text',v:b.name||''}],v=>{snap();b.name=(v.n||'').trim()||b.name||'بدون اسم';b.savedAt=Date.now();save();renderWbName();renderWbList()})};
 $('#wbNew').onclick=()=>{dlg('مناسبة جديدة',[{k:'n',l:'اسم المناسبة',t:'text',v:'مناسبة '+(S.boards.length+1)}],v=>{const nm=(v.n||'').trim()||('مناسبة '+(S.boards.length+1));
   const b=curBoard();if(b)b.savedAt=Date.now();save();
@@ -925,8 +990,7 @@ $('#wbLink').onclick=async()=>{
 })();
 
 function boot(){
-  const b=curBoard();
-  if(!b)return;
+  const b=curBoard();if(!b)return;
   if(!b.lastOpened)b.lastOpened=Date.now();
   LAST_SAVED_SNAP=JSON.stringify(b);
   if(!b.name){
