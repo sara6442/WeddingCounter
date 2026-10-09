@@ -195,7 +195,7 @@ function ph(t,id,x,y,pl){
   const cat=p.cat?`<i class="pc">${esc(p.cat)}</i>`:'';
   const linkBtn=`<button data-a="br" class="${ln.length?'on':''}" title="ربط بشجرة أخرى">🌿</button>`;
   const eyeBtn=showEye?`<button data-a="eye" title="إظهار/إخفاء شجرة الأصدقاء">👁</button>`:'';
-  return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k}" data-a="${k}">+</u>`).join('')}</div>`
+  return`<div class="p ${p.g} ${p.d?'dead':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''} ${p.st=='n'?'no':''}" data-i="${id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':`<i class="pr pr${p.pr}" data-a="pr" title="الأولوية"></i>`}${p.st?`<em class="bg ${p.st}">${p.st=='y'?'✔':'✖'}</em>`:''}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k=='t'?'pt':k}" data-a="${k}">+</u>`).join('')}</div>`
 }
 function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
  Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}
@@ -355,7 +355,7 @@ function render(){
     ps=ps.replace(/top:(\d+(\.\d+)?)px/g,(_,v)=>`top:${+v+padTop}px`);
     t.unions.forEach(u=>{if(!u||!pos[u.p])return;const y=Y(u.p)+padTop;let mx=X(u.p),y0=y+H;
      if(u.s&&pos[u.s]){const a=X(u.p),b=X(u.s);d+=`M${Math.min(a,b)+W/2} ${y+H/2}H${Math.max(a,b)-W/2}`;mx=(a+b)/2;y0=y+H/2}
-     const kk=u.kids.filter(k=>pos[k]);if(kk.length){const bus=y+H+V/2,xs=kk.map(X);const pp0=t.persons[u.p]||{};if(pp0.ph&&!linksOf(pp0).length)y0=bus;d+=`M${mx} ${y0}V${bus}M${Math.min(mx,...xs)} ${bus}H${Math.max(mx,...xs)}`;kk.forEach(k=>d+=`M${X(k)} ${bus}V${Y(k)+padTop}`)}});
+     const kk=u.kids.filter(k=>pos[k]);if(kk.length){const bus=y+H+V/2,xs=kk.map(X);const pp0=t.persons[u.p]||{};if(pp0.ph)y0=bus;d+=`M${mx} ${y0}V${bus}M${Math.min(mx,...xs)} ${bus}H${Math.max(mx,...xs)}`;kk.forEach(k=>d+=`M${X(k)} ${bus}V${Y(k)+padTop}`)}});
     TH[t.id]=hh;TW[t.id]=w;
     h+=`<div class="t" data-t="${t.id}" style="left:${t.x}px;top:${t.y}px;width:${w}px;height:${hh}px"><div class="th"><button class="mv" data-a="mv" title="تحريك الشجرة">✥</button><span>🌳 ${esc(t.name)}</span><button data-a="tn" title="تعديل الاسم">✎</button><button data-a="dup" title="نسخ الشجرة">⧉</button><button data-a="tx" title="حذف الشجرة">🗑</button></div><svg width="${w}" height="${hh}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wbf)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${ps}${em?'':tcnt(t)}</div>`;
   });
@@ -378,10 +378,29 @@ function render(){
     if(anchor)anchor.outerHTML=inner;
   });
 
-  links();cnt();msUi();renderWbList();renderWbName();
+  alignTrees();links();cnt();msUi();renderWbList();renderWbName();
 }
 function msUi(){document.body.classList.toggle('ms',MSON);$('#ms').classList.toggle('on',MSON);const b=$('#mb');b.style.display=MSON?'flex':'none';
  if(MSON)b.innerHTML=`<b>${MS.size} محدد</b><button class="tb" data-m="y">✔ أكّد الحضور</button><button class="tb" data-m="n">✖ اعتذر</button><button class="tb" data-m="0">↺ بلا حالة</button><button class="tb" data-m="all">تحديد الكل</button><button class="tb" data-m="del">🗑 حذف</button><button class="tb" data-m="x">إنهاء</button>`}
+/* يوحّد مستوى الأبناء: الابن المرتبط بوالدين في شجرة أخرى يُوضع صفّه تحت صف الوالدين بالضبط (والإخوة على صف واحد) */
+function alignTrees(){
+  for(let pass=0;pass<4;pass++){let moved=false;
+    boardTrees().forEach(t=>{
+      if(!t||t.hid||t.ty=='fr'||!POS[t.id])return;
+      for(const id of Object.keys(POS[t.id])){
+        const p=t.persons[id];if(!p)continue;
+        const l=linksOf(p).find(x=>{const c=boardTrees().find(z=>z.id==x.br);return c&&c.ty!='fr'&&!c.hid&&POS[c.id]});
+        if(!l)continue;
+        const c=boardTrees().find(z=>z.id==l.br);let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];
+        const q=POS[t.id][id],r=POS[c.id][bp];if(!q||!r)continue;
+        const want=(l.rel=='p'&&!p.ph)?c.y+r.y+H+V-q.y:c.y+r.y-q.y;
+        if(Math.abs(want-t.y)>0.5){t.y=want;const el=document.querySelector('.t[data-t="'+t.id+'"]');if(el)el.style.top=want+'px';moved=true}
+        break;
+      }
+    });
+    if(!moved)break;
+  }
+}
 function links(){
   let a='',b='';
   boardTrees().forEach(t=>{
@@ -419,16 +438,18 @@ function links(){
           b+=`M${cx} ${cy}V${cy-15}Q${cx} ${ey} ${ex} ${ey}`;
           return;
         }
-        // مركز مستطيل الهدف (وليس حافته اليمنى)
-        const tx=c.x+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].x+OX[c.id]:0);
-        const tY=c.y+(POS[c.id]&&POS[c.id][bp]?POS[c.id][bp].y+58+42:0);
+        // مركز مستطيل الهدف ونقطة نزول الوالدين (منتصف خط الزواج أو أسفل المستطيل)
+        const pr=POS[c.id]&&POS[c.id][bp];
+        const tx=c.x+(pr?pr.x+OX[c.id]:0);
+        const tY=c.y+(pr?pr.y+58+42:0);
         if(l.rel=='p'){
           const cu=c.unions.find(u=>u.s&&(u.p==bp||u.s==bp)&&POS[c.id][u.p]&&POS[c.id][u.s]);
           let ex=tx,ey=tY+H;if(cu){ex=c.x+OX[c.id]+(POS[c.id][cu.p].x+POS[c.id][cu.s].x)/2;ey=tY+H/2}
-          a+=`M${cx} ${cy}V${cy-15}L${cx} ${ey+20}L${ex} ${ey+20}V${ey}`;
+          const tBus=tY+H+V/2;
+          // خط واحد طولي من الوالدين ثم خط عرضي مشترك ثم نزول لكل ابن (الوالدان المخفيان: ينتهي عند خط الأبناء)
+          a+=p.ph?`M${ex} ${ey}V${tBus}H${cx}V${cy+H+V/2}`:`M${ex} ${ey}V${tBus}H${cx}V${cy}`;
         }else{
-          const sx=cx,ex=tx,mx=(sx+ex)/2;
-          a+=`M${cx} ${cy}V${cy-15}L${mx} ${cy-15}L${mx} ${tY}L${ex} ${tY}`;
+          a+=`M${cx} ${cy}V${cy-15}H${tx}V${tY}`;
         }
       });
     });
@@ -740,7 +761,7 @@ bd.addEventListener('pointerdown',e=>{if(e.target.closest('.p,button:not(.mv),.p
 bd.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
  if(drag.pan){const v=boardView();v.x=drag.a+dx;v.y=drag.b+dy;tf()}
  else if(drag.mode=='tree'){const k=boardView().k;Object.keys(drag.linked).forEach(id=>{const o=drag.linked[id],tt=boardTrees().find(x=>x.id==id);if(!tt)return;tt.x=o.x+dx/k;tt.y=o.y+dy/k;if(o.el){o.el.style.left=tt.x+'px';o.el.style.top=tt.y+'px'}});links()}});
-const up=()=>{if(drag){drag=null;save()}};bd.addEventListener('pointerup',up);bd.addEventListener('pointercancel',up);
+const up=()=>{if(drag){const m=drag.mode;drag=null;save();if(m=='tree')render()}};bd.addEventListener('pointerup',up);bd.addEventListener('pointercancel',up);
 function zoom(f,mx,my){const k0=boardView().k,k=Math.min(2,Math.max(.25,k0*f));const v=boardView();v.x=mx-(mx-v.x)*k/k0;v.y=my-(my-v.y)*k/k0;v.k=k;tf();save()}
 bd.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.1:.9,e.clientX,e.clientY)},{passive:false});
 $('#zi').onclick=()=>zoom(1.2,innerWidth/2,innerHeight/2);$('#zo').onclick=()=>zoom(.83,innerWidth/2,innerHeight/2);
