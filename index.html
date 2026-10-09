@@ -207,62 +207,106 @@ function render(){
       const byCat={};catsArr.forEach(c=>byCat[c]=[]);
       Object.values(t.persons).forEach(p=>{(byCat[p.cat]=byCat[p.cat]||[]).push(p.id)});
 
-      const padTop=42;
-      const padInner=20;         // هامش داخلي
-      const outerL=14;           // هامش خارجي أيسر بين حدود الشجرة وحدود الفئة
-      const outerR=14;           // هامش خارجي أيمن
-      const headPad=26;
-      const rowH=H+16;
-      const cGap=22;
-      const catTail=48;
-      const gapCols=16;
+      // الأرقام الموحدة
+      const gapTreeCat = 24;      // بين حد الشجرة وحد الفئة
+      const gapCatFriend = 24;    // بين حد الفئة وأول/آخر صديق
+      const gapCols = 16;         // بين صديقين في نفس الصف
+      const padTop = 42;
+      const headPad = 26;
+      const rowH = H+16;
+      const cGap = 22;
+      const catTail = 48;
+
+      // ====== بناء الصفوف بشكل صحيح ======
+      // لكل فئة: نبني "مجموعات" — كل مجموعة = صف، عناصرها [L2,L1, ROOT, R1,R2]
+      // الفكرة: كل صديق ليس of أحد = root. وتوابع root من L/R
+      function buildRows(ids){
+        const set=new Set(ids);
+        const isChild=new Set();
+        ids.forEach(id=>{const p=t.persons[id];if(!p)return;(p.L||[]).forEach(x=>{if(set.has(x))isChild.add(x)});(p.R||[]).forEach(x=>{if(set.has(x))isChild.add(x)})});
+        const roots=ids.filter(id=>!isChild.has(id));
+        const visited=new Set();
+        const rows=[];
+        // أولاً: roots التي لها L/R (لأنها الأصل)
+        const rootsWithKids=roots.filter(id=>{const p=t.persons[id];return p&&((p.L||[]).length||(p.R||[]).length)});
+        const rootsAlone=roots.filter(id=>!rootsWithKids.includes(id));
+        // الأبناء يوضعون مع abيهم
+        function orderRow(rootId){
+          const p=t.persons[rootId];if(!p)return [rootId];
+          const left=(p.L||[]).filter(x=>set.has(x));
+          const right=(p.R||[]).filter(x=>set.has(x));
+          // من اليسار إلى اليمين: [left..., root, right...]
+          // ترتيب left من الأبعد إلى الأقرب (أي اقلب)
+          const leftOrdered=left.slice().reverse();
+          return [...leftOrdered, rootId, ...right];
+        }
+        rootsWithKids.forEach(r=>{
+          if(visited.has(r))return;
+          const row=orderRow(r);
+          row.forEach(x=>visited.add(x));
+          rows.push(row);
+        });
+        // ثم: roots بدون L/R → كل واحد صف منفرد
+        rootsAlone.forEach(r=>{
+          if(visited.has(r))return;
+          rows.push([r]);visited.add(r);
+        });
+        // أي أبناء متبقّين (بدون أب في القائمة) → صف منفرد
+        ids.forEach(id=>{
+          if(visited.has(id))return;
+          rows.push([id]);visited.add(id);
+        });
+        return rows;
+      }
 
       // احسب أوسع فئة أولاً
       const catData=catsArr.map(c=>{
         const ids=byCat[c]||[];
-        const rows=[],used=new Set();
-        ids.forEach(id=>{if(used.has(id))return;const p=t.persons[id];
-          const row=[id];used.add(id);
-          (p.L||[]).forEach(r=>{if(!used.has(r)&&ids.includes(r)){row.push(r);used.add(r)}});
-          (p.R||[]).forEach(r=>{if(!used.has(r)&&ids.includes(r)){row.push(r);used.add(r)}});
-          rows.push(row)});
-        const cols=Math.max(1,...rows.map(r=>r.length));
-        const contentW = cols*W + (cols-1)*gapCols;
-        return {c,rows,cols,contentW};
+        const rows=buildRows(ids);
+        const maxRowLen=Math.max(1,...rows.map(r=>r.length));
+        const contentW = maxRowLen*W + (maxRowLen-1)*gapCols;
+        return {c,rows,contentW};
       });
       const maxContentW = Math.max(...catData.map(x=>x.contentW), W);
-      const CW = maxContentW + padInner*2;
+      const CW = maxContentW + gapCatFriend*2;
 
       let cy=padTop+10;
       catData.forEach(cd=>{
-        const {c,rows,cols,contentW}=cd;
+        const {c,rows,contentW}=cd;
         const chh=headPad + rows.length*rowH + catTail;
 
         rows.forEach((row,ri)=>{
+          // ضع الصف بحيث يكون الصف الأوسع متمركزاً = contentW (عرض المحتوى الأقصى)
           const rowW = row.length*W + (row.length-1)*gapCols;
-          const rowLeft = (CW - rowW)/2;
+          // الصف يبدأ من يسار contentW + (contentW - rowW)/2
+          const rowLeft = (contentW - rowW)/2;
+          // من اليمين إلى اليسار: العنصر الأخير في الصف (right end) -> على اليمين
+          // نريد: row[last] على يمين contentW، row[0] على يسارها
           row.forEach((id,ci)=>{
-            const x = CW - (rowLeft + W/2 + ci*(W+gapCols));
+            // ci=0 → أقصى اليسار، ci=last → أقصى اليمين
+            const xFromLeft = rowLeft + W/2 + ci*(W+gapCols);
+            const x = xFromLeft;      // هذا موضع "المركز" بالنسبة لليسار
             const y = cy + headPad + ri*rowH;
             pos[id]={x:x,y:y};
           });
         });
         const catKey=encodeURIComponent(c);
-        // الفئة تُرسم بإزاحة خارجية يسار لضمان وجود فراغ
-        extra+=`<div class="cat" style="left:${outerL}px;top:${cy}px;width:${CW}px;height:${chh}px"><div class="cat-t" data-a="cat-menu" data-cat="${catKey}" data-t="${t.id}">${esc(c)} ✎</div></div>`;
-        extra+=`<button class="plu" data-a="addcat-friend" data-cat="${catKey}" data-t="${t.id}" style="left:${outerL + CW/2}px;top:${cy+chh-catTail/2}px" title="إضافة صديق إلى ${esc(c)}">+</button>`;
+        // الفئة تُرسم داخل الشجرة بإزاحة gapTreeCat من اليسار، وبعرض CW
+        extra+=`<div class="cat" style="left:${gapTreeCat}px;top:${cy}px;width:${CW}px;height:${chh}px"><div class="cat-t" data-a="cat-menu" data-cat="${catKey}" data-t="${t.id}">${esc(c)} ✎</div></div>`;
+        extra+=`<button class="plu" data-a="addcat-friend" data-cat="${catKey}" data-t="${t.id}" style="left:${gapTreeCat + CW/2}px;top:${cy+chh-catTail/2}px" title="إضافة صديق إلى ${esc(c)}">+</button>`;
         cy += chh + cGap;
       });
 
-      w = outerL + CW + outerR;   // عرض الشجرة = هامش يسار + عرض الفئة + هامش يمين
+      w = gapTreeCat + CW + gapTreeCat;
       ox = 0;
 
+      // خطوط الصفوف (روابط L/R)
       catsArr.forEach(c=>{
         (byCat[c]||[]).forEach(id=>{
           const p=t.persons[id];if(!p||!pos[id])return;
-          const px=pos[id].x+outerL;
-          (p.L||[]).forEach(r=>{const q=pos[r];if(!q)return;const qx=q.x+outerL;const y=pos[id].y+H/2;d+=`M${Math.min(px,qx)+W/2} ${y}H${Math.max(px,qx)-W/2}`});
-          (p.R||[]).forEach(r=>{const q=pos[r];if(!q)return;const qx=q.x+outerL;const y=pos[id].y+H/2;d+=`M${Math.min(px,qx)+W/2} ${y}H${Math.max(px,qx)-W/2}`});
+          const px=pos[id].x+gapTreeCat;
+          (p.L||[]).forEach(r=>{const q=pos[r];if(!q)return;const qx=q.x+gapTreeCat;const y=pos[id].y+H/2;d+=`M${Math.min(px,qx)+W/2} ${y}H${Math.max(px,qx)-W/2}`});
+          (p.R||[]).forEach(r=>{const q=pos[r];if(!q)return;const qx=q.x+gapTreeCat;const y=pos[id].y+H/2;d+=`M${Math.min(px,qx)+W/2} ${y}H${Math.max(px,qx)-W/2}`});
         });
       });
 
@@ -289,15 +333,16 @@ function render(){
   });
   $('#tr').innerHTML=h;
 
-  // ارسم أفراد شجرة الأصدقاء بعد إدراج HTML (لإضافة outerL للـ x)
+  // ارسم أفراد شجرة الأصدقاء
   boardTrees().forEach(t=>{
     if(t.ty!='fr'||t.hid)return;
     const el=document.querySelector('.t[data-t="'+t.id+'"]');if(!el)return;
     const pos=POS[t.id]||{};
+    const gapTreeCat=24;
     let inner='';
     Object.keys(pos).forEach(id=>{
       const p=t.persons[id];if(!p)return;
-      inner+=ph(t,id,pos[id].x+14,pos[id].y,'lr');
+      inner+=ph(t,id,pos[id].x+gapTreeCat,pos[id].y,'lr');
     });
     const anchor=el.querySelector('#frp-'+t.id);
     if(anchor)anchor.outerHTML=inner;
@@ -319,8 +364,8 @@ function links(){
         let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];if(!bp)return;
         let q=POS[t.id][id];if(!q)return;
         const off=idx*10;
-        const qx = t.ty=='fr' ? q.x+14 : q.x+OX[t.id];
-        const baseX=t.x+qx+(t.ty=='fr'?W/2:0);
+        const qx = t.ty=='fr' ? q.x+24 : q.x+OX[t.id];
+        const baseX=t.x+qx+(t.ty=='fr'?0:W/2);
         const baseY=t.y+q.y+(t.ty=='fr'?H/2:58+42);
         const cx=baseX;
         const ty=baseY+off;
@@ -428,38 +473,32 @@ function addFamP(t,id,a){
     sel=null;ch()
   })
 }
-// ========== إضافة صديق (يدعم الجهتين — يسار/يمين — بأنواع مختلفة) ==========
+// إضافة صديق (يمين أو يسار) — الافتراضي "أخ/أخت"؛ يمكن تغييره
 function addFrP(t,cat,afterId,side){
   const cats=(t.cats||[]).slice();
   const catOpts=cats.map(c=>[c,c]).concat([['__new__','＋ فئة جديدة']]);
-  // خيارات العلاقة حسب الجهة
-  const relOpts = side
-    ? (side=='L'
-        ? [['sib','أخ/أخت'],['mother','أم'],['father','أب'],['wife','زوجة'],['husband','زوج'],['other','أخرى']]
-        : [['sib','أخ/أخت'],['mother','أم'],['father','أب'],['wife','زوجة'],['husband','زوج'],['other','أخرى']])
-    : null;
+  const relOpts=[['sib','أخ/أخت'],['wife','زوجة'],['husband','زوج'],['mother','أم'],['father','أب'],['other','أخرى']];
   const F=[
     {k:'n',l:'الاسم',t:'text',v:''},
     {k:'g',l:'الجنس',o:[['m','ذكر'],['f','أنثى']],v:'m'},
+    {k:'rel',l:'نوع العلاقة',o:relOpts,v:'sib',h:v=>!afterId},
     {k:'catsel',l:'الفئة (إلزامية)',t:'sel',o:catOpts,v:cat||cats[0]||'__new__'},
     {k:'newcat',l:'اسم الفئة الجديدة',t:'text',v:'',h:v=>v.catsel!='__new__'},
     {k:'d',l:'الحالة',o:[['0','حي'],['1','متوفى']],v:'0'},
     {k:'pr',l:'الأولوية',o:[['1','🔴'],['2','🟡'],['3','🟢']],v:'1',h:v=>v.d=='1'},
     {k:'st',l:'الحضور',o:[['y','✔'],['n','✖'],['','—']],v:'y',h:v=>v.d=='1'}
   ];
-  if(relOpts)F.unshift({k:'rel',l:'نوع العلاقة',o:relOpts,v:'sib'});
   dlg('إضافة صديق'+(cat?' إلى «'+esc(cat)+'»':''),F,v=>{
     snap();
     let c=v.catsel;
     if(c=='__new__')c=(v.newcat||'').trim();
     if(!c){alert('الفئة إلزامية');return}
     if(!t.cats)t.cats=[];if(!t.cats.includes(c))t.cats.push(c);
-    const n={id:uid(),j:0,links:[],L:[],R:[],cat:c,of:afterId||null};ap(n,v);t.persons[n.id]=n;
-    // اضبط الجنس حسب نوع العلاقة إن أمكن
+    const n={id:uid(),j:0,links:[],L:[],R:[],cat:c,of:afterId||null};ap(n,v);
     if(v.rel=='mother'||v.rel=='wife')n.g='f';
     if(v.rel=='father'||v.rel=='husband')n.g='m';
+    t.persons[n.id]=n;
     if(afterId&&t.persons[afterId]){
-      // جهة الإضافة
       if(side=='L'){(t.persons[afterId].L=t.persons[afterId].L||[]).push(n.id)}
       else if(side=='R'){(t.persons[afterId].R=t.persons[afterId].R||[]).push(n.id)}
       n.j=1
