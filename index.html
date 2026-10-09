@@ -189,6 +189,62 @@ function tcnt(t){let m=0,f=0,dm=0,df=0,noM=0,noF=0;
  const mAlive=m-noM,fAlive=f-noF;
  return`<div class="tcnt">عداد<span class="pop"><b>العدد الكلي</b><br><span class="m">ذكور: ${m}</span> · <span class="f">إناث: ${f}</span><br><b>بعد خصم الاعتذار</b><br><span class="m">ذكور: ${mAlive}</span> · <span class="f">إناث: ${fAlive}</span><br><span class="dl">معتذر: ${noM+noF}</span>${dm+df?`<br><span class="dl">متوفى: ${dm+df}</span>`:''}</span></div>`}
 
+// ============ بناء صفوف شجرة الأصدقاء ============
+function buildRowsFr(t,ids){
+  const set=new Set(ids);
+  const isChild=new Set();
+  // من هو الابن؟ كل من هو في L/R لأحد، أو كل من له of في نفس الفئة
+  ids.forEach(id=>{
+    const p=t.persons[id];if(!p)return;
+    (p.L||[]).forEach(x=>{if(set.has(x))isChild.add(x)});
+    (p.R||[]).forEach(x=>{if(set.has(x))isChild.add(x)});
+    if(p.of && set.has(p.of)) isChild.add(id);
+  });
+  const roots=ids.filter(id=>!isChild.has(id));
+  const visited=new Set();
+  const rows=[];
+
+  function orderRow(rootId){
+    const p=t.persons[rootId];if(!p)return [rootId];
+    const left=[], right=[];
+    (p.L||[]).forEach(x=>{if(set.has(x)&&!left.includes(x))left.push(x)});
+    (p.R||[]).forEach(x=>{if(set.has(x)&&!right.includes(x))right.push(x)});
+    // أي ابن عنده of=root ولم يُضف بعد
+    ids.forEach(id=>{
+      if(id==rootId)return;
+      const q=t.persons[id];if(!q)return;
+      if(q.of==rootId && !left.includes(id) && !right.includes(id)) right.push(id);
+    });
+    // ترتيب اليسار من الأبعد إلى الأقرب: نعكس
+    const leftOrdered=left.slice().reverse();
+    return [...leftOrdered, rootId, ...right];
+  }
+
+  const rootsWithKids=roots.filter(id=>{
+    const p=t.persons[id];if(!p)return false;
+    const hasLR=(p.L||[]).length||(p.R||[]).length;
+    const hasOf=ids.some(x=>{const q=t.persons[x];return q&&q.of==id});
+    return hasLR||hasOf;
+  });
+  const rootsAlone=roots.filter(id=>!rootsWithKids.includes(id));
+
+  rootsWithKids.forEach(r=>{
+    if(visited.has(r))return;
+    const row=orderRow(r);
+    row.forEach(x=>visited.add(x));
+    rows.push(row);
+  });
+  rootsAlone.forEach(r=>{
+    if(visited.has(r))return;
+    rows.push([r]);visited.add(r);
+  });
+  ids.forEach(id=>{
+    if(visited.has(id))return;
+    rows.push([id]);visited.add(id);
+  });
+  return rows;
+}
+
 function render(){
   memo={};KO={};POS={};let h='';
   boardTrees().forEach(t=>{
@@ -208,7 +264,7 @@ function render(){
       Object.values(t.persons).forEach(p=>{(byCat[p.cat]=byCat[p.cat]||[]).push(p.id)});
 
       const gapTreeCat = 24;      // بين حد الشجرة وحد الفئة
-      const gapCatFriend = 24;    // بين حد الفئة وأول/آخر صديق
+      const gapCatFriend = 32;    // بين حد الفئة وأول/آخر صديق
       const gapCols = 16;
       const padTop = 42;
       const headPad = 26;
@@ -216,43 +272,10 @@ function render(){
       const cGap = 22;
       const catTail = 48;
 
-      function buildRows(ids){
-        const set=new Set(ids);
-        const isChild=new Set();
-        ids.forEach(id=>{const p=t.persons[id];if(!p)return;(p.L||[]).forEach(x=>{if(set.has(x))isChild.add(x)});(p.R||[]).forEach(x=>{if(set.has(x))isChild.add(x)})});
-        const roots=ids.filter(id=>!isChild.has(id));
-        const visited=new Set();
-        const rows=[];
-        const rootsWithKids=roots.filter(id=>{const p=t.persons[id];return p&&((p.L||[]).length||(p.R||[]).length)});
-        const rootsAlone=roots.filter(id=>!rootsWithKids.includes(id));
-        function orderRow(rootId){
-          const p=t.persons[rootId];if(!p)return [rootId];
-          const left=(p.L||[]).filter(x=>set.has(x));
-          const right=(p.R||[]).filter(x=>set.has(x));
-          const leftOrdered=left.slice().reverse();
-          return [...leftOrdered, rootId, ...right];
-        }
-        rootsWithKids.forEach(r=>{
-          if(visited.has(r))return;
-          const row=orderRow(r);
-          row.forEach(x=>visited.add(x));
-          rows.push(row);
-        });
-        rootsAlone.forEach(r=>{
-          if(visited.has(r))return;
-          rows.push([r]);visited.add(r);
-        });
-        ids.forEach(id=>{
-          if(visited.has(id))return;
-          rows.push([id]);visited.add(id);
-        });
-        return rows;
-      }
-
-      // احسب أوسع فئة
+      // أوسع فئة
       const catData=catsArr.map(c=>{
         const ids=byCat[c]||[];
-        const rows=buildRows(ids);
+        const rows=buildRowsFr(t,ids);
         const maxRowLen=Math.max(1,...rows.map(r=>r.length));
         const contentW = maxRowLen*W + (maxRowLen-1)*gapCols;
         return {c,rows,contentW};
@@ -267,10 +290,9 @@ function render(){
 
         rows.forEach((row,ri)=>{
           const rowW = row.length*W + (row.length-1)*gapCols;
-          // توسيط الصف داخل contentW (الفراغ المتبقي)
+          // توسيط الصف داخل contentW
           const rowLeft = (contentW - rowW)/2;
           row.forEach((id,ci)=>{
-            // نضيف gapCatFriend ثم الإزاحة داخل المحتوى
             const xFromLeft = gapCatFriend + rowLeft + W/2 + ci*(W+gapCols);
             const y = cy + headPad + ri*rowH;
             pos[id]={x:xFromLeft,y:y};
@@ -285,6 +307,7 @@ function render(){
       w = gapTreeCat + CW + gapTreeCat;
       ox = 0;
 
+      // خطوط L/R (روابط أفقية داخل الفئة)
       catsArr.forEach(c=>{
         (byCat[c]||[]).forEach(id=>{
           const p=t.persons[id];if(!p||!pos[id])return;
@@ -317,6 +340,7 @@ function render(){
   });
   $('#tr').innerHTML=h;
 
+  // ارسم أفراد شجرة الأصدقاء
   boardTrees().forEach(t=>{
     if(t.ty!='fr'||t.hid)return;
     const el=document.querySelector('.t[data-t="'+t.id+'"]');if(!el)return;
@@ -456,6 +480,7 @@ function addFamP(t,id,a){
     sel=null;ch()
   })
 }
+// عند الإضافة لليسار/اليمين: نضيف إلى of أيضاً (للضمان)
 function addFrP(t,cat,afterId,side){
   const cats=(t.cats||[]).slice();
   const catOpts=cats.map(c=>[c,c]).concat([['__new__','＋ فئة جديدة']]);
