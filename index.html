@@ -14,8 +14,10 @@ button{font:inherit;cursor:pointer;color:inherit}
 .th button,.p button{background:none;border:0;padding:0 2px;font-size:13px}
 .p{position:absolute;width:130px;height:56px;background:#fff;color:#222;border:3px solid;border-radius:12px 6px 14px 7px/7px 13px 6px 12px;padding:6px 10px 6px 24px;font-size:14px;display:flex;align-items:center;cursor:grab;overflow:visible}
 .p b{font-weight:600;line-height:1.2;direction:rtl;text-align:right;width:100%;overflow:hidden;max-height:42px}
-.p.impossible{background:#f4f4f4;color:#888;border-style:dashed}
+.p.impossible{color:#888;border-style:dashed}
 .p.impossible b{text-decoration:line-through}
+.p.stY{background:#e6f6e6}
+.p.stN{background:#fde6e6}
 .m{border-color:#9cc3ee}.f{border-color:#f2a9c9}
 .dead{background:#e2e2e2;color:#888;border-style:dashed}.dead b{opacity:.7}
 .p button{position:absolute;bottom:1px;left:3px;line-height:1}
@@ -23,55 +25,36 @@ button{font:inherit;cursor:pointer;color:inherit}
 .p button+button+button{left:41px}
 .p button+button+button+button{left:60px}
 .big{position:absolute;left:50%;top:calc(50% + 17px);transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;border:3px dashed var(--ln);background:var(--card);font-size:36px;color:var(--ink);display:grid;place-items:center;line-height:0;padding:0;padding-bottom:2px}
-.tb.on{background:#ffd95a;color:#222}.ms .p button,.ms .pl{display:none!important}.p.ms1{outline:3px solid #ffb300;outline-offset:2px}.no{opacity:.5}
+.tb.on{background:#ffd95a;color:#222}.ms .p button,.ms .pl{display:none!important}.p.ms1{outline:3px solid #ffb300;outline-offset:2px}
 .bg{position:absolute;right:-8px;top:-8px;width:22px;height:22px;border-radius:50%;font-style:normal;text-align:center;line-height:22px;font-size:12px;color:#fff;z-index:3;font-weight:700}
-.bg.c4{background:#3cb371}   /* سيحضر بالتأكيد: ✔ */
-.bg.c3{background:#f5c518}   /* سندعوه وقد يحضر: - */
-.bg.c2{background:#f0a04b}   /* غالباً لن يأتي: ! */
-.bg.c1{background:#e5484d}   /* مستحيل أن يأتي: ✖ */
-#mb{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:none;flex-direction:column;gap:6px;align-items:stretch;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px 12px;z-index:40;max-width:94vw;min-width:min(560px,94vw)}
-#mb .r1{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;font-size:13px;padding-bottom:6px;border-bottom:1px dashed var(--ln)}
-#mb .r1 .pill{display:flex;align-items:center;gap:4px}
-#mb .r1 .dot{width:14px;height:14px;border-radius:50%;color:#fff;text-align:center;line-height:14px;font-size:10px;font-weight:700}
+.bg.c4{background:#3cb371}
+.bg.c3{background:#f5c518}
+.bg.c2{background:#f0a04b}
+.bg.c1{background:#e5484d}
+#mb{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:none;flex-direction:column;gap:6px;align-items:stretch;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px 12px;z-index:40;max-width:94vw;min-width:min(640px,94vw)}
+#mb .r1{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px dashed var(--ln)}
+#mb .r1 button{border:2px solid var(--ln);border-radius:8px;padding:5px 10px;font-size:12px;background:var(--bg);display:flex;align-items:center;gap:6px}
+#mb .r1 button .dot{width:16px;height:16px;border-radius:50%;color:#fff;text-align:center;line-height:16px;font-size:11px;font-weight:700;flex:none}
 #mb .r2{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-#mb .r2 .sp{width:12px}
+#mb .r2 .sp{width:14px}
 #ts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--ink);border:2px solid var(--ln);border-radius:10px;padding:6px 14px;display:none;z-index:60}
 .pl{
-  position:absolute;
-  width:20px;height:20px;
-  line-height:16px;
-  text-align:center;
-  background:#fff;
-  color:#222;
-  border:2px solid #555;
-  border-radius:50%;
-  font-size:15px;
-  z-index:20;
-  text-decoration:none;
-  opacity:0;
-  pointer-events:none;
-  visibility:hidden;
+  position:absolute;width:20px;height:20px;line-height:16px;text-align:center;
+  background:#fff;color:#222;border:2px solid #555;border-radius:50%;
+  font-size:15px;z-index:20;text-decoration:none;
+  opacity:0;pointer-events:none;visibility:hidden;
   transition:opacity .12s ease .25s, visibility 0s linear .25s;
 }
-.p:hover .pl,.p.sel .pl{
-  opacity:1;
-  pointer-events:auto;
-  visibility:visible;
-  transition:opacity 0s, visibility 0s;
-}
+.p:hover .pl,.p.sel .pl{opacity:1;pointer-events:auto;visibility:visible;transition:opacity 0s, visibility 0s}
 .pl.pt{top:-36px;left:50%;transform:translateX(-50%)}
 .pl.b{bottom:-36px;left:50%;transform:translateX(-50%)}
 .pl.l{left:-24px;top:15px}
 .pl.r{right:-24px;top:15px}
 .plu{
-  position:absolute;
-  width:30px; height:30px;
-  display:grid; place-items:center;
-  background:var(--card); color:var(--ink);
-  border:2px dashed var(--ln); border-radius:50%;
-  font-size:18px; font-weight:600; cursor:pointer; z-index:4;
-  transform:translate(-50%,-50%);
-  line-height:0; padding:0; padding-bottom:3px;
+  position:absolute;width:30px;height:30px;display:grid;place-items:center;
+  background:var(--card);color:var(--ink);border:2px dashed var(--ln);border-radius:50%;
+  font-size:18px;font-weight:600;cursor:pointer;z-index:4;
+  transform:translate(-50%,-50%);line-height:0;padding:0;padding-bottom:3px;
   font-family:'Segoe UI',Tahoma,sans-serif;
 }
 .plu:hover{background:#ffd95a;color:#222}
@@ -105,14 +88,14 @@ button{font:inherit;cursor:pointer;color:inherit}
 .tcnt:hover .pop{display:block}
 .tcnt .pop b{font-weight:600}
 .tcnt .m{color:#4a90d9}.tcnt .f{color:#e0568f}.tcnt .dl{color:#888}
-#wb{position:fixed;left:8px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px;font-size:12px;width:170px;z-index:20}
-#wb .lbl{font-weight:600;font-size:13px;color:var(--ink);opacity:.85;margin-bottom:2px;text-align:center}
-#wbList{display:flex;flex-direction:column;gap:3px}
+#wb{position:fixed;left:8px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px;font-size:12px;width:170px;z-index:20;max-height:70vh}
+#wb .lbl{font-weight:600;font-size:13px;color:var(--ink);opacity:.85;margin-bottom:2px;text-align:center;flex:none}
+#wbList{display:flex;flex-direction:column;gap:3px;overflow:auto;flex:1 1 auto}
 #wbList button{width:100%;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:3px 6px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #wbList button.cur{background:#ffd95a;color:#222;font-weight:600}
 #wbList button:hover{background:#ffd95a;color:#222}
 #wbList button.wbOther{background:#e8e8e8}
-#wb .row{display:flex;flex-direction:column;gap:4px}
+#wb .row{display:flex;flex-direction:column;gap:4px;flex:none}
 #wb .row button{width:100%;background:var(--bg);border:2px solid var(--ln);border-radius:6px;padding:5px 6px;font-size:11px;text-align:center}
 #wb .row button:hover{background:#ffd95a;color:#222}
 #wbSide{position:fixed;left:190px;top:0;display:none;flex-direction:column;align-items:stretch;gap:4px;background:var(--card);border:2px solid var(--ln);border-radius:10px;padding:8px;font-size:12px;width:180px;max-height:60vh;overflow:auto;z-index:25}
@@ -160,7 +143,6 @@ let ROW_DRAG=null;
 const uid=()=>Math.random().toString(36).slice(2,9);
 const LS_KEY='mz2',LS_OLD='mz',LS_BAK='mz_backup';
 
-// أصناف التنبؤ (4) مع رموز
 const PRED={
   p1:{l:'مستحيل أن يأتي',c:'c1',sym:'✖'},
   p2:{l:'غالباً لن يأتي',c:'c2',sym:'!'},
@@ -247,10 +229,13 @@ function ph(t,id,x,y,pl){
   const cat=p.cat?`<i class="pc">${esc(p.cat)}</i>`:'';
   const linkBtn=`<button data-a="br" class="${ln.length?'on':''}" title="ربط بشجرة أخرى">🌿</button>`;
   const eyeBtn=showEye?`<button data-a="eye" title="إظهار/إخفاء شجرة الأصدقاء">👁</button>`:'';
-  const pred=p.pred&&PRED[p.pred]?PRED[p.pred]:null;
-  const isImp=p.pred=='p1';
+  // إذا كان هناك تأكيد (y/n)، لا نعرض علامة التنبؤ
+  const hasConf=p.st==='y'||p.st==='n';
+  const pred=p.pred&&PRED[p.pred]&&!hasConf?PRED[p.pred]:null;
+  const isImp=p.pred=='p1'&&!hasConf;
   const predDot=pred?`<em class="bg ${pred.c}" title="${esc(pred.l)}">${pred.sym}</em>`:'';
-  return`<div class="p ${p.g} ${p.d?'dead':''} ${isImp?'impossible':''} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''}" data-i="${id}" data-t="${t.id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':predDot}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k}" data-a="${k}">+</u>`).join('')}</div>`
+  const stCls=p.st==='y'?'stY':(p.st==='n'?'stN':'');
+  return`<div class="p ${p.g} ${p.d?'dead':''} ${isImp?'impossible':''} ${stCls} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''}" data-i="${id}" data-t="${t.id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':predDot}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k}" data-a="${k}">+</u>`).join('')}</div>`
 }
 function tcnt(t){let m=0,f=0,dm=0,df=0;
  Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}
@@ -439,10 +424,10 @@ function msUi(){
   if(MSON){
     b.innerHTML=`
       <div class="r1">
-        <div class="pill"><span class="dot" style="background:#e5484d">✖</span> مستحيل أن يأتي</div>
-        <div class="pill"><span class="dot" style="background:#f0a04b">!</span> غالباً لن يأتي</div>
-        <div class="pill"><span class="dot" style="background:#f5c518">−</span> سندعوه وقد يحضر</div>
-        <div class="pill"><span class="dot" style="background:#3cb371">✔</span> سيحضر بالتأكيد</div>
+        <button data-m="setp4"><span class="dot" style="background:#3cb371">✔</span> سيحضر بالتأكيد</button>
+        <button data-m="setp3"><span class="dot" style="background:#f5c518">−</span> سندعوه وقد يحضر</button>
+        <button data-m="setp2"><span class="dot" style="background:#f0a04b">!</span> غالباً لن يأتي</button>
+        <button data-m="setp1"><span class="dot" style="background:#e5484d">✖</span> مستحيل أن يأتي</button>
       </div>
       <div class="r2">
         <b style="align-self:center">${MS.size} محدد</b>
@@ -501,23 +486,28 @@ function links(){
   $('#lk').innerHTML=`<path d="${a}" stroke-width="2.5" stroke-linejoin="round" fill="none"/><path d="${b}" stroke-dasharray="7 6" fill="none"/>`;
 }
 function cnt(){
+  // تنبؤية: للأفراد بدون تأكيد فقط
+  // تأكيدية: للأفراد الذين عندهم y أو n
   const pred={p1:{m:0,f:0},p2:{m:0,f:0},p3:{m:0,f:0},p4:{m:0,f:0}};
   const conf={y:{m:0,f:0},n:{m:0,f:0},'':{m:0,f:0}};
   boardTrees().forEach(t=>Object.values(t.persons||{}).forEach(p=>{
     if(!p||p.ph)return;
     if(p.d)return;
     const g=p.g=='f'?'f':'m';
-    if(p.pred&&pred[p.pred])pred[p.pred][g]++;
-    const st=p.st||'';
-    if(conf[st])conf[st][g]++;
+    const hasConf=p.st==='y'||p.st==='n';
+    if(hasConf){conf[p.st][g]++;}
+    else{
+      conf[''][g]++;
+      if(p.pred&&pred[p.pred])pred[p.pred][g]++;
+    }
   }));
   const mrf=(v)=>`<span class="m">${v.m}</span> · <span class="f">${v.f}</span>`;
   let h='';
   h+=`<div class="grp"><h4>💭 إحصائيات تنبؤية</h4>`;
-  h+=`<div class="row"><span class="dot" style="background:#e5484d"></span><span class="nm">مستحيل</span><span class="v">${mrf(pred.p1)}</span></div>`;
-  h+=`<div class="row"><span class="dot" style="background:#f0a04b"></span><span class="nm">غالباً لن</span><span class="v">${mrf(pred.p2)}</span></div>`;
-  h+=`<div class="row"><span class="dot" style="background:#f5c518"></span><span class="nm">قد يحضر</span><span class="v">${mrf(pred.p3)}</span></div>`;
   h+=`<div class="row"><span class="dot" style="background:#3cb371"></span><span class="nm">بالتأكيد</span><span class="v">${mrf(pred.p4)}</span></div>`;
+  h+=`<div class="row"><span class="dot" style="background:#f5c518"></span><span class="nm">قد يحضر</span><span class="v">${mrf(pred.p3)}</span></div>`;
+  h+=`<div class="row"><span class="dot" style="background:#f0a04b"></span><span class="nm">غالباً لن</span><span class="v">${mrf(pred.p2)}</span></div>`;
+  h+=`<div class="row"><span class="dot" style="background:#e5484d"></span><span class="nm">مستحيل</span><span class="v">${mrf(pred.p1)}</span></div>`;
   h+=`</div>`;
   h+=`<div class="grp"><h4>✅ إحصائيات تأكيدية</h4>`;
   h+=`<div class="row"><span class="dot" style="background:#3cb371"></span><span class="nm">أكّد</span><span class="v">${mrf(conf.y)}</span></div>`;
@@ -863,31 +853,29 @@ function firstFam(t){dlg('إضافة أول فرد',pf(B()),v=>{snap();const n={
 
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform='translate('+boardView().x+'px,'+boardView().y+'px) scale('+boardView().k+')';
 
-// الشجرة الفرعية للفرد: الزوج + الأبناء والأحفاد (مع أزواج الأبناء)
+// الشجرة الفرعية للفرد: الفرد + أبناؤه فقط (ليس الزوجة، ليس الأحفاد، ليس أزواج الأبناء)
 function familyGroup(t,id){
   const out=new Set([id]);
-  // الزوج/الزوجة من union الأساسي
-  const pu=PU(t,id);
-  if(pu){const spouse=pu.p==id?pu.s:pu.p;if(spouse&&t.persons[spouse])out.add(spouse);}
-  // كل الأبناء من كل unions التي هو p أو s فيها + أزواجهم
-  const walk=(x)=>{
-    t.unions.filter(u=>u.p==x||u.s==x).forEach(u=>{
-      u.kids.forEach(k=>{
-        if(!out.has(k)){
-          out.add(k);
-          // أضف زوج/زوجة الابن
-          const q=PU(t,k);
-          if(q){const sp=q.p==k?q.s:q.p;if(sp&&t.persons[sp]&&!out.has(sp))out.add(sp);}
-          walk(k);
-        }
-      });
-    });
-  };
-  walk(id);
+  t.unions.filter(u=>u.p==id||u.s==id).forEach(u=>{
+    u.kids.forEach(k=>{if(!out.has(k))out.add(k)});
+  });
   return out;
 }
 
 bd.addEventListener('pointerdown',e=>{
+  // في وضع التحديد: لا تبدأ السحب
+  if(MSON){
+    const th=e.target.closest('.th');
+    if(th){
+      // يبقى السحب للشجرة متاحاً
+      const t=boardTrees().find(x=>x.id==th.parentNode.dataset.t);if(!t)return;
+      snap();
+      const positions={};positions[t.id]={x:t.x,y:t.y,el:document.querySelector('.t[data-t="'+t.id+'"]')};
+      drag={linked:positions,sx:e.clientX,sy:e.clientY,mode:'tree'};
+      try{bd.setPointerCapture(e.pointerId)}catch(_){}
+    }
+    return;
+  }
   const th=e.target.closest('.th');
   if(th){
     const t=boardTrees().find(x=>x.id==th.parentNode.dataset.t);if(!t)return;
@@ -962,6 +950,11 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key=='z'&&!
 $('#mb').onclick=e=>{const m=e.target.dataset.m;if(!m)return;
  if(m=='x'){MSON=false;MS.clear();render();return}
  snap();
+ if(m.startsWith('setp')){
+   const target=m.slice(4); // p1..p4
+   boardTrees().forEach(t=>MS.forEach(id=>{const p=t.persons[id];if(p&&!p.d){p.pred=target;delete p.st;}}));
+   MS.clear();render();return;
+ }
  if(m=='all')boardTrees().forEach(t=>{if(!t.hid)Object.values(t.persons).forEach(p=>{if(!p.ph&&!p.d)MS.add(p.id)})});
  else if(m=='del'){boardTrees().forEach(t=>{Array.from(MS).forEach(id=>{if(t.persons[id]){delP(t,id)}})});MS.clear()}
  else{boardTrees().forEach(t=>MS.forEach(id=>{const p=t.persons[id];if(p){if(m=='0')delete p.st;else if(!p.d)p.st=m}}));MS.clear()}
