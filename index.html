@@ -50,8 +50,8 @@ button{font:inherit;cursor:pointer;color:inherit}
   transition:opacity .12s ease .25s, visibility 0s linear .25s;
 }
 .p:hover .pl,.p.sel .pl{opacity:1;pointer-events:auto;visibility:visible;transition:opacity 0s, visibility 0s}
-.pl.pt{top:-36px;left:50%;transform:translateX(-50%)}
-.pl.b{bottom:-36px;left:50%;transform:translateX(-50%)}
+.pl.pt{top:-40px;left:50%;transform:translateX(-50%);z-index:30}
+.pl.b{bottom:-40px;left:50%;transform:translateX(-50%);z-index:30}
 .pl.l{left:-24px;top:15px}
 .pl.r{right:-24px;top:15px}
 .plu{
@@ -92,7 +92,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 .tcnt:hover .pop{display:block}
 .tcnt .pop b{font-weight:600}
 .tcnt .m{color:#4a90d9}.tcnt .f{color:#e0568f}.tcnt .dl{color:#888}
-#wb{position:fixed;left:8px;top:calc(240px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:6px;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px;font-size:12px;width:170px;z-index:20;max-height:calc(100vh - 320px)}
+#wb{position:fixed;left:8px;top:calc(280px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:6px;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px;font-size:12px;width:170px;z-index:20;max-height:calc(100vh - 360px)}
 #wb .lbl{font-weight:600;font-size:13px;color:var(--ink);opacity:.85;margin-bottom:2px;text-align:center;flex:none}
 #wbList{display:flex;flex-direction:column;gap:3px;overflow:auto;flex:1 1 auto;max-height:150px}
 #wbList button{width:100%;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:3px 6px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -108,11 +108,11 @@ button{font:inherit;cursor:pointer;color:inherit}
 #searchBox{background:var(--card);border:2px solid var(--ln);border-radius:10px 5px 11px 6px;padding:3px 8px;display:flex;align-items:center;gap:6px}
 #searchBox input{border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;width:140px}
 #searchBox button{background:none;border:0;font-size:15px;padding:0 4px}
-.sres{background:var(--bg);border:2px solid var(--ln);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.sres{background:var(--bg);border:2px solid var(--ln);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:6px}
 .sres:hover{background:#ffd95a;color:#222}
-.sres .nm{font-weight:700;font-size:14px}
+.sres .nm{font-weight:700;font-size:14px;flex:1}
 .sres .nm .hi{background:#ffe082;color:#222;border-radius:3px;padding:0 2px}
-.sres .par{font-size:11px;color:#555;opacity:.85}
+.sres .par{font-size:12px;color:#555;white-space:nowrap;direction:rtl}
 .sres:hover .par{color:#222}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><filter id="wbf"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter></svg>
@@ -182,7 +182,7 @@ function migrateTree(t){
       else p.pred='p3';
     }
     delete p.pr;
-    delete p.dx; delete p.dy;   // إلغاء dx/dy القديمة
+    delete p.dx; delete p.dy;
     if(t.ty=='fr'){if(!p.L)p.L=[];if(!p.R)p.R=[];if(!p.cat)p.cat='أصدقاء'}
   });
   if(t.ty=='fr'){if(!t.cats)t.cats=[];if(!t.rowOrder)t.rowOrder={}}
@@ -215,28 +215,65 @@ function undo(){if(!UNDO.length){const ts=$('#ts');ts.textContent='لا يوجد
 const ch=()=>{boardTrees().forEach(gc);save();render()};
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// PU: union الذي هذا الفرد أحد أبنائه
 const PU=(t,id)=>t.unions.find(u=>u.kids.includes(id));
-const root=t=>{let x=Object.keys(t.persons)[0];for(let i=0;i<99;i++){const j=t.unions.find(u=>u.s==x),q=PU(t,x);if(j)x=j.p;else if(q)x=q.p;else break}return x};
-const tp=(t,x)=>{for(let i=0;i<99;i++){const q=PU(t,x);if(!q)break;x=q.p}return x};
+// والد/والدة: union فيه هذا الفرد كـ p أو s
+const PARENT_U=(t,id)=>t.unions.find(u=>u.p==id||u.s==id);
+// root: أول فرد ليس ابناً لأحد
+const root=t=>{
+  const ids=Object.keys(t.persons).filter(id=>!t.persons[id].ph);
+  const child=new Set();
+  ids.forEach(id=>{if(PU(t,id))child.add(id)});
+  const r=ids.find(id=>!child.has(id));
+  return r||Object.keys(t.persons)[0];
+};
+const tp=(t,x)=>{for(let i=0;i<99;i++){const q=PU(t,x);if(!q)break;x=q.p||q.s}return x};
 const MS=new Set();
 const gc=t=>{if(!t||t.ty=='fr')return;t.unions=t.unions.filter(u=>{const p=t.persons[u.p];if(p&&p.ph&&!u.kids.length){delete t.persons[u.p];return false}return true})};
 const cl=(A,B)=>A.some(a=>B.some(b=>a.r==b.r&&Math.abs(a.x-b.x)<W+10));
 const sh=(A,x,r)=>A.map(a=>({i:a.i,x:a.x+x,r:a.r+r}));
-function anc(t,sid,sd){const Q=PU(t,sid);if(!Q)return[];KO[Q.id]={s:sid,d:sd};
- const b=lay(t,tp(t,Q.p)),g=b.it.find(a=>a.i==sid);return g?sh(b.it.filter(a=>a.i!=sid),-g.x,-g.r):[]}
-function lay(t,id){if(memo[id])return memo[id];const B=memo[id]={it:[{i:id,x:0,r:0}]};
- const us=t.unions.filter(u=>u.p==id),sp=us.filter(u=>u.s);let it,d=W+G;
- for(;d<W+G+1400;d+=20){it=[{i:id,x:0,r:0}];sp.forEach(u=>{const x=u.side=='L'?-d:d;it.push({i:u.s,x,r:0},...sh(anc(t,u.s,u.side),x,0))});
-  if(!it.some((a,i)=>it.some((b,j)=>j>i&&a.r==b.r&&Math.abs(a.x-b.x)<W+10)))break}
- const w=k=>{const q=t.unions.filter(x=>x.p==k&&x.s&&PU(t,x.s));return q.some(x=>x.side=='L')?-1:q.some(x=>x.side=='R')?1:0};
- [...sp,...us.filter(u=>!u.s)].forEach(u=>{let ks=u.kids.slice().sort((a,b)=>w(a)-w(b));const e=KO[u.id];if(e){ks=ks.filter(k=>k!=e.s);e.d=='R'?ks.unshift(e.s):ks.push(e.s)}
-  if(!ks.length)return;let acc=[],xs=[];
-  ks.forEach(k=>{const b=sh(lay(t,k).it,0,1);let x=0;if(acc.length){x=-1e9;acc.forEach(a=>b.forEach(c=>{if(a.r==c.r)x=Math.max(x,a.x-c.x+W+G)}))}xs.push(x);acc=acc.concat(sh(b,x,0))});
-  const cm=u.s?(u.side=='L'?-d/2:d/2):0,mid=(xs[0]+xs[xs.length-1])/2;let ok=0;
-  for(let k=0;k<400&&!ok;k++){const z=sh(acc,cm-mid+(k%2?-1:1)*Math.ceil(k/2)*10,0);if(!cl(z,it)){it=it.concat(z);ok=1}}
-  if(!ok)it=it.concat(sh(acc,cm-mid+4000,0))});
- B.it=it;return B}
-const hsd=(t,id,s)=>t.unions.some(u=>u.p==id&&u.s&&u.side==s);
+
+function anc(t,sid,sd){
+  const Q=PU(t,sid);if(!Q)return[];
+  KO[Q.id]={s:sid,d:sd};
+  const parentId=Q.p||Q.s;
+  const b=lay(t,parentId),g=b.it.find(a=>a.i==sid);
+  return g?sh(b.it.filter(a=>a.i!=sid),-g.x,-g.r):[];
+}
+function lay(t,id){
+  if(memo[id])return memo[id];
+  const B=memo[id]={it:[{i:id,x:0,r:0}]};
+  const us=t.unions.filter(u=>u.p==id||u.s==id);
+  const sp=us.filter(u=>u.s);
+  let it,d=W+G;
+  for(;d<W+G+1400;d+=20){
+    it=[{i:id,x:0,r:0}];
+    sp.forEach(u=>{
+      const spouse=u.p==id?u.s:u.p;
+      if(!spouse)return;
+      const x=u.side=='L'?-d:d;
+      it.push({i:spouse,x,r:0},...sh(anc(t,spouse,u.side),x,0));
+    });
+    if(!it.some((a,i)=>it.some((b,j)=>j>i&&a.r==b.r&&Math.abs(a.x-b.x)<W+10)))break;
+  }
+  const w=k=>{const q=t.unions.filter(x=>(x.p==k||x.s==k)&&x.s&&PU(t,x.s));return q.some(x=>x.side=='L')?-1:q.some(x=>x.side=='R')?1:0};
+  [...sp,...us.filter(u=>!u.s)].forEach(u=>{
+    let ks=u.kids.slice().sort((a,b)=>w(a)-w(b));
+    const e=KO[u.id];if(e){ks=ks.filter(k=>k!=e.s);e.d=='R'?ks.unshift(e.s):ks.push(e.s)}
+    if(!ks.length)return;
+    let acc=[],xs=[];
+    ks.forEach(k=>{
+      const b=sh(lay(t,k).it,0,1);let x=0;
+      if(acc.length){x=-1e9;acc.forEach(a=>b.forEach(c=>{if(a.r==c.r)x=Math.max(x,a.x-c.x+W+G)}))}
+      xs.push(x);acc=acc.concat(sh(b,x,0));
+    });
+    const cm=u.s?(u.side=='L'?-d/2:d/2):0,mid=(xs[0]+xs[xs.length-1])/2;let ok=0;
+    for(let k=0;k<400&&!ok;k++){const z=sh(acc,cm-mid+(k%2?-1:1)*Math.ceil(k/2)*10,0);if(!cl(z,it)){it=it.concat(z);ok=1}}
+    if(!ok)it=it.concat(sh(acc,cm-mid+4000,0));
+  });
+  B.it=it;return B;
+}
+const hsd=(t,id,s)=>t.unions.some(u=>(u.p==id||u.s==id)&&u.s&&u.side==s);
 function linksOf(p){return Array.isArray(p.links)?p.links:[]}
 function hasFrLink(p){return linksOf(p).some(l=>{const c=boardTrees().find(z=>z.id==l.br);return c&&c.ty=='fr'})}
 
@@ -307,22 +344,24 @@ function buildRowsFr(t,ids,cat){
   return rows;
 }
 
-// تجميع الشجرة العائلية إلى مجموعات
+// ===== المجموعات =====
 function rebuildGroups(t){
-  // لكل جذر (شخص ليس ابناً لأحد)، المجموعة = الجذر + زوجه + كل الأبناء وزوجاتهم وأحفادهم
   const groups=[];const claimed=new Set();
   const allIds=Object.keys(t.persons).filter(id=>!t.persons[id].ph);
-  const isChild=new Set();allIds.forEach(id=>{const q=PU(t,id);if(q)isChild.add(id)});
+  if(!allIds.length){t.groups=[];return}
+  const isChild=new Set();allIds.forEach(id=>{if(PU(t,id))isChild.add(id)});
   const roots=allIds.filter(id=>!isChild.has(id));
+  const isSpouseOfClaimed=(id)=>{return t.unions.some(u=>(u.p==id||u.s==id)&&(claimed.has(u.p)||claimed.has(u.s)))};
+  // كل جذر غير مُطالب به يبدأ مجموعة
   roots.forEach(rid=>{
     if(claimed.has(rid))return;
     const m=new Set([rid]);claimed.add(rid);
-    // زوج/زوجة الجذر من أي union
+    // الزوج/الزوجة (من أي union)
     t.unions.filter(u=>u.p==rid||u.s==rid).forEach(u=>{
       const sp=u.p==rid?u.s:u.p;
       if(sp&&t.persons[sp]&&!claimed.has(sp)){m.add(sp);claimed.add(sp)}
     });
-    // الأبناء والأحفاد + أزواجهم
+    // الأبناء والأحفاد + زوجاتهم
     const walk=(x)=>{
       t.unions.filter(u=>u.p==x||u.s==x).forEach(u=>{
         u.kids.forEach(k=>{
@@ -339,14 +378,17 @@ function rebuildGroups(t){
     walk(rid);
     groups.push({id:uid(),members:Array.from(m),dx:0,dy:0});
   });
-  // أي فرد متبقٍ → مجموعة بمفرده
+  // أي فرد متبقٍ غير مُطالب به → مجموعة بمفرده
   allIds.forEach(id=>{if(!claimed.has(id)){groups.push({id:uid(),members:[id],dx:0,dy:0});claimed.add(id)}});
   return groups;
 }
 function groupOf(t,pid){
   if(!t.groups||!t.groups.length)t.groups=rebuildGroups(t);
   for(const g of t.groups){if(g.members.includes(pid))return g}
-  // إن لم يُوجد، أضف مجموعة جديدة
+  // احتياطي: أعد البناء
+  t.groups=rebuildGroups(t);
+  for(const g of t.groups){if(g.members.includes(pid))return g}
+  // كحل أخير
   const ng={id:uid(),members:[pid],dx:0,dy:0};t.groups.push(ng);return ng;
 }
 
@@ -437,13 +479,12 @@ function render(){
       return;
     }
 
-    // شجرة عائلة — استخدام groups
+    // شجرة عائلة
     if(!t.groups||!t.groups.length)t.groups=rebuildGroups(t);
     if(em){w=230;ox=20;ps='<button class="big" data-a="first">＋</button>'}
     else{
       const b=lay(t,root(t)),r0=Math.min(...b.it.map(a=>a.r));
       b.it.forEach(a=>{
-        const p=t.persons[a.i]||{};
         const g=groupOf(t,a.i);
         const gx=g?g.dx:0, gy=g?g.dy:0;
         pos[a.i]={x:a.x+gx,y:(a.r-r0)*(H+V)+gy};
@@ -644,14 +685,21 @@ function addFamP(t,id,a){
     if(a=='t'&&role=='p'&&v.loc=='out'){const nt=mkFam(Object.assign({},v,{}),t.x,t.y-220);(tgt.links=tgt.links||[]).push({br:nt.id,bp:Object.keys(nt.persons)[0],rel:'p'});sel=null;ch();return}
     const n={id:uid(),j:0,links:[]};ap(n,v);t.persons[n.id]=n;
     if(a=='t'){
-      if(role=='p'){if(!pu)t.unions.push({id:uid(),p:n.id,s:null,side:'R',kids:[id]});else if(t.persons[pu.p].ph){delete t.persons[pu.p];pu.p=n.id}else{pu.s=n.id;pu.side='L';n.j=1}}
+      if(role=='p'){
+        // الأب/الأم فقط: union جديد حيث الفرد الجديد هو p أو s والابن هو kid
+        if(!pu)t.unions.push({id:uid(),p:n.id,s:null,side:'R',kids:[id]});
+        else if(t.persons[pu.p]&&t.persons[pu.p].ph){delete t.persons[pu.p];pu.p=n.id}
+        else{pu.s=n.id;pu.side='L';n.j=1}
+      }
       else if(pu)pu.kids.splice(pu.kids.indexOf(id)+1,0,n.id);
       else{const h={id:uid(),n:'؟',g:'m',d:0,pred:'p3',sk:false,j:0,links:[],ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:[id,n.id]})}
     }
     else if(a=='b'){let u=roles?t.unions.find(x=>x.id==role):us[0];if(!u){u={id:uid(),p:id,s:null,side:'R',kids:[]};t.unions.push(u)}u.kids.push(n.id)}
     else{const side=a=='l'?'L':'R';n.j=1;
-      const nu=t.unions.find(u=>u.p==id&&!u.s&&u.side==side)||t.unions.find(u=>u.p==id&&!u.s);
-      if(nu){nu.s=n.id;nu.side=side}else t.unions.push({id:uid(),p:id,s:n.id,side,kids:[]})}
+      // إضافة زوج/ة: union جديد بين الفرد الجديد والزوجة، بلا أبناء (يُربط الفرد بـ union الزواج)
+      const nu=t.unions.find(u=>(u.p==id||u.s==id)&&!u.s);
+      if(nu){nu.s=n.id;nu.side=side}
+      else t.unions.push({id:uid(),p:id,s:n.id,side,kids:[]})}
     t.groups=rebuildGroups(t);
     sel=null;ch()
   })
@@ -788,7 +836,7 @@ function brSameTree(t,p){
         if(!u){
           const existing=PU(t,p.id);
           if(existing){
-            if(t.persons[existing.p].ph){existing.p=other.id}
+            if(t.persons[existing.p]&&t.persons[existing.p].ph){existing.p=other.id}
             else if(!existing.s){existing.s=other.id;existing.side='L';other.j=1}
             else{alert('الفرد لديه والدان بالفعل');return}
           }else{
@@ -869,7 +917,7 @@ function aiApply(t,me,D){const map={me:me.id},made=[];
   if(!P){const k0=K.find(k=>PU(t,k));if(k0){const u0=PU(t,k0);K.forEach(k=>{if(!PU(t,k))u0.kids.push(k)})}else if(K.length>1){const h={id:uid(),n:'؟',g:'m',d:0,pred:'p3',sk:false,j:0,links:[],ph:1};t.persons[h.id]=h;t.unions.push({id:uid(),p:h.id,s:null,side:'R',kids:K})}return}
   const kid=K.find(k=>PU(t,k));
   if(kid){const u0=PU(t,kid);K.forEach(k=>{if(!PU(t,k)&&k!=u0.p&&k!=u0.s)u0.kids.push(k)});
-   if(t.persons[u0.p].ph){const o=u0.p;u0.p=P;delete t.persons[o];S2=S2&&S2!=P?S2:null;if(S2&&!u0.s){u0.s=S2;t.persons[S2].j=1}}
+   if(t.persons[u0.p]&&t.persons[u0.p].ph){const o=u0.p;u0.p=P;delete t.persons[o];S2=S2&&S2!=P?S2:null;if(S2&&!u0.s){u0.s=S2;t.persons[S2].j=1}}
    else if(!u0.s){const c=[P,S2].find(x=>x&&x!=u0.p);if(c){u0.s=c;u0.side='L';t.persons[c].j=1}}return}
   let p=P,sp=S2;if(sp&&!made.includes(sp)&&made.includes(p)||t.persons[p].j&&sp){[p,sp]=[sp,p]}
   const ux=t.unions.find(x=>x.p==p&&(!x.s||x.s==sp));
@@ -926,7 +974,8 @@ function firstFam(t){dlg('إضافة أول فرد',pf(B()),v=>{snap();const n={
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform='translate('+boardView().x+'px,'+boardView().y+'px) scale('+boardView().k+')';
 
 bd.addEventListener('pointerdown',e=>{
-  // في وضع التحديد: لا سحب على الأفراد
+  // أزرار + على الأفراد لا تبدأ سحب
+  if(e.target.closest('.pl'))return;
   if(MSON){
     const th=e.target.closest('.th');
     if(th){
@@ -978,21 +1027,6 @@ bd.addEventListener('pointermove',e=>{
     const dx=e.clientX-ROW_DRAG.sx,dy=e.clientY-ROW_DRAG.sy;
     if(Math.abs(dy)>5||Math.abs(dx)>5){ROW_DRAG.moved=true}
     if(!ROW_DRAG.moved)return;
-    const k=boardView().k;
-    const t=boardTrees().find(x=>x.id==ROW_DRAG.tid);if(!t)return;
-    const startPos=POS[t.id]&&POS[t.id][ROW_DRAG.rootId];
-    if(!startPos)return;
-    const newX=startPos.x+dx/k;
-    const newY=startPos.y+dy/k;
-    // حرّك الأفراد بصرياً (لن نُعيد الرسم كاملاً)
-    const el=document.querySelector('.t[data-t="'+ROW_DRAG.tid+'"]');
-    if(el){
-      ROW_DRAG.rowIds.forEach(id=>{
-        const pe=el.querySelector('.p[data-i="'+id+'"]');
-        if(!pe)return;
-        const px=pos_check(t,id);if(!px)return;
-      });
-    }
     render();
     return;
   }
@@ -1021,17 +1055,11 @@ bd.addEventListener('pointermove',e=>{
     return;
   }
 });
-function pos_check(t,id){
-  const el=document.querySelector('.p[data-i="'+id+'"]');
-  if(!el)return null;
-  return {left:parseFloat(el.style.left)||0,top:parseFloat(el.style.top)||0};
-}
 const up=(e)=>{
   if(ROW_DRAG){
     const rd=ROW_DRAG;ROW_DRAG=null;
     if(rd.moved){
       const t=boardTrees().find(x=>x.id==rd.tid);if(!t)return;
-      // اكتشف الفئة المستهدفة
       const catEls=document.querySelectorAll('.t[data-t="'+t.id+'"] .cat');
       let targetCat=null;
       catEls.forEach(el=>{
@@ -1118,16 +1146,18 @@ function parentNames(t,id){
   const p=t.persons[u.p],s=u.s?t.persons[u.s]:null;
   let f='',m='';
   if(p&&s){if(p.g=='m'){f=p.n;m=s.n}else{f=s.n;m=p.n}}
-  else if(p)f=(p.g=='m')?p.n:'';
-  else if(s)m=(s.g=='f')?s.n:'';
+  else if(p)f=(p.g=='m')?p.n:(p.g=='f'?'':p.n);
+  else if(s)m=(s.g=='f')?s.n:(s.g=='m'?'':s.n);
+  // حالة: p فقط أو s فقط
+  if(p&&!s){if(p.g=='m')f=p.n;else if(p.g=='f')m=p.n}
+  if(s&&!p){if(s.g=='f')m=s.n;else if(s.g=='m')f=s.n}
   return {f,m};
 }
 function depthBFS(t){
-  // عمق كل فرد باستخدام BFS من الجذور
   const depths={};
   const allIds=Object.keys(t.persons).filter(id=>!t.persons[id].ph);
   const isChild=new Set();
-  allIds.forEach(id=>{const q=PU(t,id);if(q)isChild.add(id)});
+  allIds.forEach(id=>{if(PU(t,id))isChild.add(id)});
   const roots=allIds.filter(id=>!isChild.has(id));
   const queue=roots.map(id=>[id,0]);
   roots.forEach(id=>depths[id]=0);
@@ -1147,7 +1177,6 @@ function openSearch(){
   $('#ov').style.display='flex';
   const inp=$('#sf');setTimeout(()=>inp.focus(),50);
   const res=$('#searchRes');
-  // اجمع عمق كل فرد لكل شجرة مقدماً (سريع)
   const treeDepths=[];
   boardTrees().forEach(t=>{treeDepths.push({t,d:depthBFS(t)})});
   const doSearch=()=>{
@@ -1173,7 +1202,9 @@ function openSearch(){
       const highlighted=esc(it.p.n).replace(rx,'<span class="hi">$1</span>');
       let parTxt='';
       if(it.par.f||it.par.m){
-        parTxt='ابن '+ (it.par.f?esc(it.par.f):'؟') +' و '+ (it.par.m?esc(it.par.m):'؟');
+        if(it.par.f&&it.par.m)parTxt='ابن '+esc(it.par.f)+' و '+esc(it.par.m);
+        else if(it.par.f)parTxt='ابن '+esc(it.par.f);
+        else if(it.par.m)parTxt='ابن '+esc(it.par.m);
       }
       div.innerHTML=`<div class="nm">${highlighted}</div>${parTxt?`<div class="par">${parTxt}</div>`:''}`;
       div.onclick=()=>{
