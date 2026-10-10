@@ -46,10 +46,10 @@ button{font:inherit;cursor:pointer;color:inherit}
   position:absolute;width:20px;height:20px;line-height:16px;text-align:center;
   background:#fff;color:#222;border:2px solid #555;border-radius:50%;
   font-size:15px;z-index:20;text-decoration:none;
-  opacity:0;pointer-events:none;visibility:hidden;
+  opacity:0;visibility:hidden;
   transition:opacity .12s ease .25s, visibility 0s linear .25s;
 }
-.p:hover .pl,.p.sel .pl{opacity:1;pointer-events:auto;visibility:visible;transition:opacity 0s, visibility 0s}
+.p:hover .pl,.p.sel .pl{opacity:1;visibility:visible;transition:opacity 0s, visibility 0s}
 .pl.pt{top:-36px;left:50%;transform:translateX(-50%)}
 .pl.b{bottom:-36px;left:50%;transform:translateX(-50%)}
 .pl.l{left:-24px;top:15px}
@@ -878,11 +878,21 @@ function delP(t,id){
         if(Array.isArray(pp.links))pp.links=pp.links.filter(l=>!(l.br==t.id&&l.bp==id));
       });
     });
-    t.unions.filter(u=>u.p==id).forEach(u=>{if(u.s){const s=t.persons[u.s];if(s)s.j=0;u.p=u.s;u.s=null}else u.p=null});
+    // ما يبقى متصلًا بالأصل نُبقيه في الشجرة، وما ينفصل بسبب الحذف يُنقل لشجرة «فرع …» بدل أن يختفي
+    let keepCand=null;
+    if(p.j){const ju=t.unions.find(u=>u.s==id);if(ju)keepCand=ju.p}
+    else{const pu0=PU(t,id);if(pu0)keepCand=[pu0.p,pu0.s].find(x=>x&&x!=id&&!(t.persons[x]&&t.persons[x].ph))}
+    t.unions.filter(u=>u.p==id).forEach(u=>{
+      if(u.s){const s=t.persons[u.s];if(s)s.j=0;u.p=u.s;u.s=null}
+      else if(u.kids.length){const h={id:uid(),n:'؟',g:'m',d:0,pred:'p3',sk:false,j:0,links:[],ph:1};t.persons[h.id]=h;u.p=h.id}   // الأبناء يبقون معًا بوالدين مخفيين
+      else u.p=null;
+    });
     t.unions.forEach(u=>{if(u.s==id)u.s=null;u.kids=u.kids.filter(k=>k!=id)});
     delete t.persons[id];
     t.unions=t.unions.filter(u=>u.p&&t.persons[u.p]);
     gc(t);
+    const keep=(keepCand&&t.persons[keepCand])?keepCand:Object.keys(t.persons).find(k=>!t.persons[k].ph);
+    if(keep)splitTree(t,keep);
   }
   ch();
 }
@@ -985,6 +995,7 @@ function firstFam(t){dlg('إضافة أول فرد',pf(B()),v=>{snap();const n={
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform='translate('+boardView().x+'px,'+boardView().y+'px) scale('+boardView().k+')';
 
 bd.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.th button:not(.mv)'))return;   // أزرار رأس الشجرة (حذف/اسم/نسخ...) تعمل بالنقر فقط
   if(MSON){
     const th=e.target.closest('.th');
     if(th){
@@ -1012,9 +1023,8 @@ bd.addEventListener('pointerdown',e=>{
     const t=boardTrees().find(x=>x.id==tid);
     if(t&&t.ty!=='fr'){
       const p=t.persons[pids];if(!p)return;
-      drag={mode:'person',sx:e.clientX,sy:e.clientY,tid,pid:pids,ox:(p.off&&p.off.x)||0,oy:(p.off&&p.off.y)||0};
-      DRAG_P={moved:false};
-      try{bd.setPointerCapture(e.pointerId)}catch(_){}
+      drag={mode:'person',pi:e.pointerId,sx:e.clientX,sy:e.clientY,tid,pid:pids,ox:(p.off&&p.off.x)||0,oy:(p.off&&p.off.y)||0};
+      DRAG_P={moved:false};   // لا نلتقط المؤشر إلا عند بدء السحب فعلًا، وإلا لا تصل النقرة (التحديد/إظهار +)
       return;
     }
     if(t&&t.ty==='fr'){
@@ -1022,8 +1032,7 @@ bd.addEventListener('pointerdown',e=>{
       const rootId=p.of&&t.persons[p.of]?p.of:pids;
       const rootP=t.persons[rootId];if(!rootP)return;
       const rowIds=new Set([rootId,...(rootP.L||[]),...(rootP.R||[])]);
-      ROW_DRAG={mode:'row',sx:e.clientX,sy:e.clientY,tid,rootId,rowIds,moved:false,cat:rootP.cat};
-      try{bd.setPointerCapture(e.pointerId)}catch(_){}
+      ROW_DRAG={mode:'row',pi:e.pointerId,sx:e.clientX,sy:e.clientY,tid,rootId,rowIds,moved:false,cat:rootP.cat};
       return;
     }
   }
@@ -1034,7 +1043,7 @@ bd.addEventListener('pointerdown',e=>{
 bd.addEventListener('pointermove',e=>{
   if(ROW_DRAG){
     const dx=e.clientX-ROW_DRAG.sx,dy=e.clientY-ROW_DRAG.sy;
-    if(Math.abs(dy)>5||Math.abs(dx)>5){ROW_DRAG.moved=true}
+    if(Math.abs(dy)>5||Math.abs(dx)>5){if(!ROW_DRAG.moved){try{bd.setPointerCapture(ROW_DRAG.pi)}catch(_){}}ROW_DRAG.moved=true}
     if(!ROW_DRAG.moved)return;
     render();
     return;
@@ -1053,7 +1062,7 @@ bd.addEventListener('pointermove',e=>{
   }
   if(drag.mode==='person'){
     const k=boardView().k;
-    if(!DRAG_P.moved){if(Math.abs(dx)<=3&&Math.abs(dy)<=3)return;DRAG_P.moved=true;snap()}
+    if(!DRAG_P.moved){if(Math.abs(dx)<=3&&Math.abs(dy)<=3)return;DRAG_P.moved=true;snap();try{bd.setPointerCapture(drag.pi)}catch(_){}}
     const t=boardTrees().find(x=>x.id==drag.tid);if(!t)return;
     const p=t.persons[drag.pid];if(!p)return;
     p.off={x:Math.round(drag.ox+dx/k),y:Math.round(drag.oy+dy/k)};
@@ -1117,9 +1126,9 @@ const up=(e)=>{
     return;
   }
   if(!drag)return;
-  const mode=drag.mode;
+  const mode=drag.mode,mv=DRAG_P&&DRAG_P.moved;
   drag=null;DRAG_P=null;save();
-  if(mode==='tree'||mode==='person')render();
+  if(mode==='person'&&mv)render();   // إعادة الرسم بعد النقرة العادية تُفقد حدث النقر، فلا نُعيدها إلا بعد سحب فعلي
 };
 bd.addEventListener('pointerup',up);
 bd.addEventListener('pointercancel',up);
