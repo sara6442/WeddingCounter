@@ -8,7 +8,11 @@
 body{position:relative;background:var(--bg);color:var(--ink);font-family:'Marhey','Segoe UI',Tahoma,sans-serif;overflow:hidden}
 #bd{position:absolute;inset:0;direction:ltr;touch-action:none;cursor:grab;background-image:radial-gradient(var(--dot) 1.5px,transparent 1.5px);background-size:26px 26px}
 #cv{position:absolute;left:0;top:0;transform-origin:0 0;color:var(--ln)}
-.t{position:absolute;border:2px dashed var(--ln);border-radius:16px 8px 18px 9px/9px 17px 8px 16px}
+.t{position:absolute;border:2px dashed rgba(128,128,128,.35);border-color:color-mix(in srgb,var(--ln) 22%,transparent);border-radius:16px 8px 18px 9px/9px 17px 8px 16px;pointer-events:none;transition:border-color .12s,box-shadow .12s}
+.t .th,.t .p,.t .plu,.t .big,.t .tcnt,.t .cat-t,.t button,.t .te{pointer-events:auto}
+.t.hl{border-color:var(--ln);box-shadow:0 0 0 2px rgba(255,217,90,.55)}
+.te{position:absolute;z-index:1;background:transparent;display:block}
+.te.tn{left:0;right:0;top:-7px;height:14px;cursor:move}.te.bs{left:0;right:0;bottom:-7px;height:14px;cursor:move}.te.lw{top:0;bottom:0;left:-7px;width:14px;cursor:move}.te.rw{top:0;bottom:0;right:-7px;width:14px;cursor:move}
 .th{position:relative;z-index:2;height:34px;display:flex;align-items:center;gap:4px;padding:0 10px;cursor:move;font-weight:600;direction:rtl;user-select:none}.th span{flex:1}
 button{font:inherit;cursor:pointer;color:inherit}
 .th button,.p button{background:none;border:0;padding:0 2px;font-size:13px}
@@ -406,7 +410,7 @@ function render(){
 
       TH[t.id]=cy+20;TW[t.id]=w;
       const addCatBtn='<button data-a="addcat" title="إضافة فئة">＋ فئة</button>';
-      h+=`<div class="t" data-t="${t.id}" style="left:${t.x}px;top:${t.y}px;width:${w}px;height:${cy+20}px"><div class="th"><button class="mv" data-a="mv" title="تحريك">✥</button><span>🧑‍🤝‍🧑 ${esc(t.name)}</span>${addCatBtn}<button data-a="tn" title="تعديل الاسم">✎</button><button data-a="dup" title="نسخ">⧉</button><button data-a="tx" title="حذف">🗑</button></div><svg width="${w}" height="${cy+20}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wbf)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${extra}${ps}<div id="frp-${t.id}"></div>${em?`<button class="big" data-a="firstfr">＋</button>`:''}${em?'':tcnt(t)}</div>`;
+      h+=`<div class="t" data-t="${t.id}" style="left:${t.x}px;top:${t.y}px;width:${w}px;height:${cy+20}px"><div class="th"><button class="mv" data-a="mv" title="تحريك">✥</button><span>🧑‍🤝‍🧑 ${esc(t.name)}</span>${addCatBtn}<button data-a="tn" title="تعديل الاسم">✎</button><button data-a="dup" title="نسخ">⧉</button><button data-a="tx" title="حذف">🗑</button></div><i class="te tn"></i><i class="te bs"></i><i class="te lw"></i><i class="te rw"></i><svg width="${w}" height="${cy+20}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wbf)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${extra}${ps}<div id="frp-${t.id}"></div>${em?`<button class="big" data-a="firstfr">＋</button>`:''}${em?'':tcnt(t)}</div>`;
       OX[t.id]=ox;POS[t.id]=pos;FX[t.id]=0;FY[t.id]=0;
       return;
     }
@@ -437,7 +441,7 @@ function render(){
       if(pp0.ph){y0=bus;BUS[u.p]=bus}
       d+=`M${mx} ${y0}V${bus}M${Math.min(mx,...xs2)} ${bus}H${Math.max(mx,...xs2)}`;kk.forEach(k=>d+=`M${X(k)} ${bus}V${Y(k)+padTop}`)}});
     TH[t.id]=hh;TW[t.id]=w;
-    h+=`<div class="t" data-t="${t.id}" style="left:${t.x+fx}px;top:${t.y+fy}px;width:${w}px;height:${hh}px"><div class="th"><button class="mv" data-a="mv" title="تحريك الشجرة">✥</button><span>🌳 ${esc(t.name)}</span><button data-a="tn" title="تعديل الاسم">✎</button><button data-a="dup" title="نسخ الشجرة">⧉</button><button data-a="tx" title="حذف الشجرة">🗑</button></div><svg width="${w}" height="${hh}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wbf)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${ps}${em?'':tcnt(t)}</div>`;
+    h+=`<div class="t" data-t="${t.id}" style="left:${t.x+fx}px;top:${t.y+fy}px;width:${w}px;height:${hh}px"><div class="th"><button class="mv" data-a="mv" title="تحريك الشجرة">✥</button><span>🌳 ${esc(t.name)}</span><button data-a="tn" title="تعديل الاسم">✎</button><button data-a="dup" title="نسخ الشجرة">⧉</button><button data-a="tx" title="حذف الشجرة">🗑</button></div><i class="te tn"></i><i class="te bs"></i><i class="te lw"></i><i class="te rw"></i><svg width="${w}" height="${hh}" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:url(#wbf)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="${d}"/></svg>${ps}${em?'':tcnt(t)}</div>`;
   });
   $('#tr').innerHTML=h;
 
@@ -907,24 +911,42 @@ function dupP(t,id){const p=t.persons[id];if(!p)return;const n=Object.assign({},
 
 async function aiDlg(t,me){if(!me||me.ph)return;const sm=window.claude&&window.claude.use?await window.claude.use('sample'):null;
  dlg('✨ إضافة أفراد حول «'+esc(me.n)+'» بالكتابة',
-  [{k:'tx',l:'اكتب سطرًا لكل علاقة بالشكل «العلاقة: الأسماء»:<br>أب: أحمد<br>أم: سارة<br>إخوة: خالد، ليلى<br>زوجة: نورة<br>أبناء: عمر، رنا',t:'area',v:''}],
+  [{k:'tx',l:'اكتب سطرًا لكل علاقة بالشكل «العلاقة: الأسماء»:<br>أب: أحمد<br>أم: سارة<br>إخوة: خالد، ليلى<br>زوجة: نورة<br>أبناء: عمر، رنا (أنثى)، سعد (متوفى)<br><small>لتحديد الأنثى أو المتوفى: بين قوسين (أنثى) (متوفى)، أو بعد الاسم: «رنا أنثى» «سعد متوفى»، أو كلمة وحدها بعد فاصلة: «رنا، أنثى». الجنس الافتراضي يتبع العلاقة (أخت/ابنة/أم/زوجة = أنثى).</small>',t:'area',v:''}],
   v=>runAI(t,me,v.tx,sm),null,'إنشاء')}
 async function runAI(t,me,txt,sm){if(!(txt||'').trim())return;const ts=$('#ts');ts.textContent='⏳ جارٍ إنشاء الأفراد…';ts.style.display='block';
  try{let D=parseQuick(txt);if(!D){if(!sm)throw{message:'اكتب بصيغة «العلاقة: الأسماء» مثل «أب: أحمد»'};D=await sm.json(`حوّل وصف عائلة إلى JSON فقط. الفرد المحدد «${me.n}» id="me". الصيغة: {"people":[{"id","n","g":"m/f","d":0/1}],"unions":[{"p","s","kids"}]}. الوصف: ${txt}`,{modelTier:'quick'})}
   snap();aiApply(t,me,D);ts.style.display='none';ch()}
  catch(e){ts.textContent='تعذّر: '+((e&&e.message)||'');setTimeout(()=>ts.style.display='none',4500)}}
 const RL={أب:'F',والد:'F',أم:'M',ام:'M',والدة:'M',أخ:'B',اخ:'B',إخوة:'B',اخوة:'B',إخوان:'B',اخوان:'B',أخت:'Sg',اخت:'Sg',أخوات:'Sg',اخوات:'Sg',زوج:'H',زوجة:'W',زوجات:'W',ابن:'S',ولد:'S',أبناء:'S',ابناء:'S',أولاد:'S',اولاد:'S',ابنة:'D',بنت:'D',بنات:'D',صديق:'X',أصدقاء:'X',اصدقاء:'X',صديقة:'Xf',صديقات:'Xf'};
-function parseQuick(txt){const R={F:null,M:null,sib:[],sp:[],kids:[]},ppl=[],fr=[];let n=0,found=0,cur=null;
- txt.split(/\n+/).forEach(line=>{const m=line.match(/^\s*([^:：]+)[:：]\s*(.+)$/);if(!m)return;const key=RL[m[1].trim().replace(/^ال/,'')];if(!key)return;found=1;
-  m[2].split(/[،,]|\sو\s/).forEach(x=>{x=x.trim();if(!x)return;let d=0,cat='none',g=['F','B','H','S','X'].includes(key)?'m':'f';
-   const nm=x.replace(/\(([^)]*)\)/g,(_,q)=>{
-    if(/متوف|ميت|رحم/.test(q))d=1;
-    if(/أنثى|انثى|امرأة|امراة|\bf\b|انثي|بنت|فتاة/i.test(q))g='f';else if(/ذكر|رجل|\bm\b|ولد|شاب/i.test(q))g='m';
+function parseQuick(txt){
+ const R={F:null,M:null,sib:[],sp:[],kids:[]},ppl=[],fr=[];let n=0,found=0,cur=null,last=null;
+ const FEM=/أنثى|انثى|امرأة|امراة|\bf\b|انثي|بنت|فتاة|سيدة/i,MAL=/ذكر|رجل|\bm\b|ولد|شاب/i,DED=/متوف|ميت|رحم|توفي|وفاة/;
+ const WORD='أنثى|انثى|ذكر|متوفى|متوفية|متوفاة|ميت|ميتة|رحمه الله|رحمها الله|رحمهما الله';
+ txt.split(/\n+/).forEach(line=>{
+  const m=line.match(/^\s*([^:：]+)[:：]\s*(.+)$/);if(!m)return;
+  const hd=m[1].trim().replace(/^ال/,'');let key=RL[hd],hcat='none';
+  // عنوان صديق مع الفئة: «أصدقاء عمل» «أصدقاء دراسة» «أصدقاء حي» «زملاء» «جيران»
+  if(!key&&/صديق|اصدقاء|أصدقاء|أصحاب|صاحب|زميل|زملاء|جيران|جار/.test(hd)){key=/صديقة|صديقات/.test(hd)?'Xf':'X';hcat=/عمل|زميل|زملاء/.test(hd)?'عمل':/دراس|جامع/.test(hd)?'دراسة':/حي|جيران|جار/.test(hd)?'حي':'none'}
+  if(!key)return;found=1;last=null;
+  m[2].split(/[،,؛;]|\sو\s/).forEach(x=>{
+   x=x.trim();if(!x)return;
+   // كلمة وصف وحدها تخص الفرد السابق: «ليلى، أنثى» أو «سعد، متوفى»
+   if(last&&new RegExp('^(?:(?:'+WORD+')\\s*)+$').test(x)){if(FEM.test(x))last.g='f';else if(MAL.test(x))last.g='m';if(DED.test(x))last.d=1;return}
+   let d=0,cat=hcat,g=['F','B','H','S','X'].includes(key)?'m':'f';
+   let nm=x.replace(/[(\[]([^)\]]*)[)\]]/g,(_,q)=>{
+    if(DED.test(q))d=1;
+    if(FEM.test(q))g='f';else if(MAL.test(q))g='m';
     if(/عمل|شغل/i.test(q))cat='عمل';else if(/دراس|جامع|مدرس/i.test(q))cat='دراسة';else if(/حي|جار|جيرة/i.test(q))cat='حي';
     return''}).trim();
-   if(!nm)return;const o={n:nm,g,d,cat:cat=='none'?undefined:cat};
-   if(key=='X'||key=='Xf'){cur=Object.assign({},o,{rel:[]});fr.push(cur)}else if(cur)cur.rel.push(o);
-   else{const id='x'+(n++);ppl.push(Object.assign({id},o));if(key=='F')R.F=id;else if(key=='M')R.M=id;else if(key=='B'||key=='Sg')R.sib.push(id);else if(key=='H'||key=='W')R.sp.push(id);else R.kids.push(id)}})});
+   // كلمات بعد الاسم بلا أقواس: «ليلى أنثى» «سعد متوفى» «نورة أنثى متوفاة»
+   for(let i=0;i<4;i++){const mm=nm.match(new RegExp('^(.*\\S)\\s+('+WORD+')$'));if(!mm)break;nm=mm[1];if(FEM.test(mm[2]))g='f';else if(MAL.test(mm[2]))g='m';if(DED.test(mm[2]))d=1}
+   if(!nm)return;
+   const o={n:nm,g,d,cat:cat=='none'?undefined:cat};
+   if(key=='X'||key=='Xf'){cur=Object.assign({},o,{rel:[]});fr.push(cur);last=cur}
+   else if(cur){cur.rel.push(o);last=o}
+   else{const q=Object.assign({id:'x'+(n++)},o);ppl.push(q);last=q;const id=q.id;if(key=='F')R.F=id;else if(key=='M')R.M=id;else if(key=='B'||key=='Sg')R.sib.push(id);else if(key=='H'||key=='W')R.sp.push(id);else R.kids.push(id)}
+  });
+ });
  if(!found||(!ppl.length&&!fr.length))return null;const un=[];
  if(ppl.length){if(R.F||R.M)un.push({p:R.F||R.M,s:R.F&&R.M?R.M:null,kids:['me'].concat(R.sib)});else if(R.sib.length)un.push({p:null,s:null,kids:['me'].concat(R.sib)});
   if(R.sp.length)R.sp.forEach((s,i)=>un.push({p:'me',s:s,kids:i?[]:R.kids}));else if(R.kids.length)un.push({p:'me',s:null,kids:R.kids})}
@@ -997,7 +1019,7 @@ const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform='translate('+boardView()
 bd.addEventListener('pointerdown',e=>{
   if(e.target.closest('.th button:not(.mv)'))return;   // أزرار رأس الشجرة (حذف/اسم/نسخ...) تعمل بالنقر فقط
   if(MSON){
-    const th=e.target.closest('.th');
+    const th=e.target.closest('.th,.te');
     if(th){
       const t=boardTrees().find(x=>x.id==th.parentNode.dataset.t);if(!t)return;
       snap();
@@ -1007,7 +1029,7 @@ bd.addEventListener('pointerdown',e=>{
     }
     return;
   }
-  const th=e.target.closest('.th');
+  const th=e.target.closest('.th,.te');
   if(th){
     const t=boardTrees().find(x=>x.id==th.parentNode.dataset.t);if(!t)return;
     snap();
@@ -1223,6 +1245,8 @@ function openSearch(){
   inp.oninput=doSearch;
   $('#cx').onclick=()=>{$('#ov').style.display='none'};
 }
+$('#tr').addEventListener('mouseover',e=>{const te=e.target.closest('.te');if(te&&te.parentNode)te.parentNode.classList.add('hl')});
+$('#tr').addEventListener('mouseout',e=>{const te=e.target.closest('.te');if(te&&te.parentNode)te.parentNode.classList.remove('hl')});
 $('#sfBtn').onclick=openSearch;
 $('#sfInput').onfocus=openSearch;
 
