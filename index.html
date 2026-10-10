@@ -108,6 +108,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 #searchBox{background:var(--card);border:2px solid var(--ln);border-radius:10px 5px 11px 6px;padding:3px 8px;display:flex;align-items:center;gap:6px}
 #searchBox input{border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;width:140px}
 #searchBox button{background:none;border:0;font-size:15px;padding:0 4px}
+.lrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:2px solid var(--ln);border-radius:8px;padding:6px 8px;margin-top:6px;font-size:13px}.lrow small{opacity:.65}.lrow .lt{font-style:normal;background:var(--bg);border:1px solid var(--ln);border-radius:6px;padding:0 6px;font-size:11px}.lrow button{margin-right:auto;background:var(--bg);border:2px solid var(--ln);border-radius:6px;padding:1px 8px;font-size:12px}
 .sres{background:var(--bg);border:2px solid var(--ln);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;display:flex;flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
 .sres:hover{background:#ffd95a;color:#222}
 .sres .nm{font-weight:700;font-size:14px}
@@ -125,6 +126,7 @@ button{font:inherit;cursor:pointer;color:inherit}
     <input id="sfInput" type="text" placeholder="ابحث..." autocomplete="off">
   </div>
   <button class="tb" id="nt">➕ إضافة شجرة</button>
+  <button class="tb" id="lkm">🔗 الروابط</button>
   <button class="tb" id="bk">💾 نسخ احتياطي</button>
   <button class="tb" id="ms">☑ تحديد</button>
   <button class="tb" id="un">↶ تراجع</button>
@@ -456,7 +458,7 @@ function render(){
     if(anchor)anchor.outerHTML=inner;
   });
 
-  alignTrees();links();cnt();msUi();renderWbList();renderWbName();
+  links();cnt();msUi();renderWbList();renderWbName();
   if(FLASH_ID){setTimeout(()=>{FLASH_ID=null;render()},1600)}
 }
 function msUi(){
@@ -481,26 +483,6 @@ function msUi(){
         <button class="tb" data-m="del">🗑 حذف</button>
         <button class="tb" data-m="x">إنهاء</button>
       </div>`;
-  }
-}
-/* يوحّد مستوى الأبناء: الابن المرتبط بوالدين في شجرة أخرى يُوضع صفّه تحت صف الوالدين (والإخوة المرتبطون على صف واحد) */
-function alignTrees(){
-  for(let pass=0;pass<4;pass++){let moved=false;
-    boardTrees().forEach(t=>{
-      if(!t||t.hid||t.ty=='fr'||!POS[t.id])return;
-      for(const id of Object.keys(POS[t.id])){
-        const p=t.persons[id];if(!p)continue;
-        const l=linksOf(p).find(x=>{const c=boardTrees().find(z=>z.id==x.br);return c&&c.ty!='fr'&&!c.hid&&POS[c.id]});
-        if(!l)continue;
-        const c=boardTrees().find(z=>z.id==l.br);let bp=l.bp;if(!c.persons[bp])bp=Object.keys(c.persons)[0];
-        const q=POS[t.id][id],r=POS[c.id][bp];if(!q||!r)continue;
-        const eff=effOff(t,id,{}),qa=(FY[t.id]||0)+q.y-eff.y,ra=c.y+(FY[c.id]||0)+r.y;
-        const want=(l.rel=='p'&&!p.ph)?ra+H+V-qa:ra-qa;
-        if(Math.abs(want-t.y)>0.5){t.y=want;const el=document.querySelector('.t[data-t="'+t.id+'"]');if(el)el.style.top=(want+(FY[t.id]||0))+'px';moved=true}
-        break;
-      }
-    });
-    if(!moved)break;
   }
 }
 function links(){
@@ -740,66 +722,71 @@ function delCat(t,cat){
   $('#cx').onclick=()=>{$('#ov').style.display='none'};
 }
 
+const personsIndex=ex=>{const it=[];boardTrees().forEach(t=>Object.values(t.persons).forEach(q=>{if(!q||q.ph||q.id==ex||!q.n)return;it.push({t,q,par:parentNames(t,q.id)})}));return it};
+const parTxt=it=>{const n=[it.par.f,it.par.m].filter(Boolean).map(esc);return n.length?((it.q.g=='f'?'ابنة ':'ابن ')+n.join(' و ')):''};
+function linkSame(t,p,other,rel){
+  if(rel=='w'){const u=t.unions.find(x=>(x.p==p.id&&x.s==other.id)||(x.p==other.id&&x.s==p.id));if(!u){const side=hsd(t,p.id,'R')?'L':'R';t.unions.push({id:uid(),p:p.id,s:other.id,side,kids:[]});other.j=1}}
+  else{const u=t.unions.find(x=>x.kids.includes(p.id)&&(x.p==other.id||x.s==other.id));
+   if(!u){const ex=PU(t,p.id);
+    if(ex){if(t.persons[ex.p].ph){ex.p=other.id}else if(!ex.s){ex.s=other.id;ex.side='L';other.j=1}else{alert('الفرد لديه والدان بالفعل');return false}}
+    else t.unions.push({id:uid(),p:other.id,s:null,side:'R',kids:[p.id]})}}
+}
+function pickTarget(t,p,it){
+  if(it.t===t){dlg('علاقة «'+esc(p.n)+'» بـ «'+esc(it.q.n)+'»',[{k:'rel',l:'نوع العلاقة',o:[['w','زوج/زوجة'],['p','والد/والدة']],v:'w'}],v=>{snap();if(linkSame(t,p,it.q,v.rel)!==false)ch()},null,'ربط');return}
+  if(it.t.ty=='fr'){snap();p.links=p.links||[];p.links.push({br:it.t.id,bp:it.q.id,rel:'p'});ch();return}
+  dlg('رابط «'+esc(p.n)+'» بـ «'+esc(it.q.n)+'»',[{k:'rel',l:'نوع الرابط',o:[['p','والدان (الخط من الأعلى)'],['s','إخوة (خط عرضي)']],v:'p'}],v=>{snap();p.links=p.links||[];p.links.push({br:it.t.id,bp:it.q.id,rel:v.rel});ch()},null,'ربط');
+}
+function brNewTree(t,p){
+  dlg('🌿 ربط بشجرة جديدة',[{k:'ty',l:'نوع الشجرة الجديدة',o:[['fam','🌳 عائلة'],['fr','🧑‍🤝‍🧑 أصدقاء']],v:'fam'},{k:'tn',l:'اسم الشجرة',t:'text',v:''},{k:'cat',l:'الفئة (للأصدقاء)',t:'text',v:'أصدقاء',h:v=>v.ty!='fr'}],v=>{
+    snap();
+    const nt=v.ty=='fr'?mkFr({ty:'fr',tn:v.tn,cat:v.cat,n:'صديق'},t.x+40,t.y+(TH[t.id]||200)+70):mkFam({ty:'fam',tn:v.tn,n:'مضاف'},t.x+40,t.y+(TH[t.id]||200)+70);
+    if(v.ty=='fr')nt.hid=1;
+    p.links=p.links||[];p.links.push({br:nt.id,bp:Object.keys(nt.persons)[0],rel:'p'});ch()
+  },null,'ربط');
+}
+/* الربط بالبحث عن فرد (الاسم + الأب + الأم) في كل الأشجار، مع عرض روابط الفرد الحالية وإمكانية فكّها */
 function brDlg(t,p){
-  $('#dl').innerHTML='<h3>🌿 ربط «'+esc(p.n)+'»</h3><div class="bt" style="flex-direction:column"><button id="b1">🔗 بشجرة أخرى</button><button id="b2">👥 بفرد من نفس الشجرة</button><button id="cx">إلغاء</button></div>';
+  const ln=linksOf(p);
+  const cur=ln.length?'<label>الروابط الحالية لهذا الفرد</label>'+ln.map((l,i)=>{const c=boardTrees().find(x=>x.id==l.br);const q=c&&(c.persons[l.bp]||Object.values(c.persons)[0]);return`<div class="lrow"><b>${esc(q?q.n:'؟')}</b><small>(${esc(c?c.name:'')})</small><button data-un="${i}" class="rd">فك الرابط</button></div>`}).join(''):'';
+  $('#dl').innerHTML=`<h3>🌿 ربط «${esc(p.n)}»</h3>${cur}<label>ابحث عن فرد للربط به (الاسم أو الأب أو الأم)</label><input type="text" id="bs" placeholder="اكتب اسمًا..."><div id="bres"></div><div class="bt"><button id="bnew">＋ ربط بشجرة جديدة</button><button id="cx">إلغاء</button></div>`;
   $('#ov').style.display='flex';
-  $('#b1').onclick=()=>{$('#ov').style.display='none';brOtherTree(t,p)};
-  $('#b2').onclick=()=>{$('#ov').style.display='none';brSameTree(t,p)};
+  const idx=personsIndex(p.id),res=$('#bres');
+  $('#dl').querySelectorAll('[data-un]').forEach(b=>b.onclick=()=>{snap();p.links.splice(+b.dataset.un,1);ch();brDlg(t,p)});
+  $('#bs').oninput=()=>{
+    const q=($('#bs').value||'').trim();res.innerHTML='';if(!q)return;
+    const m=idx.filter(it=>it.q.n.includes(q)||[it.par.f,it.par.m].some(x=>x&&x.includes(q)));
+    m.sort((a,b)=>(b.q.n.includes(q)?1:0)-(a.q.n.includes(q)?1:0));
+    if(!m.length){res.innerHTML='<div style="text-align:center;opacity:.6;padding:8px">لا نتائج</div>';return}
+    const rx=new RegExp('('+escapeRegex(q)+')','g');
+    m.slice(0,60).forEach(it=>{
+      const div=document.createElement('div');div.className='sres';
+      const pt=parTxt(it);
+      div.innerHTML=`<span class="nm">${esc(it.q.n).replace(rx,'<span class="hi">$1</span>')}</span>${pt?`<span class="par">${pt}</span>`:''}<span class="par">· ${esc(it.t.name)}</span>`;
+      div.onclick=()=>{$('#ov').style.display='none';pickTarget(t,p,it)};
+      res.appendChild(div);
+    });
+  };
+  $('#bnew').onclick=()=>{$('#ov').style.display='none';brNewTree(t,p)};
   $('#cx').onclick=()=>{$('#ov').style.display='none'};
+  setTimeout(()=>{const b=$('#bs');if(b)b.focus()},50);
 }
-function brOtherTree(t,p){
-  const ot=boardTrees().filter(x=>x!=t&&Object.keys(x.persons).length);
-  const o=[['new','＋ شجرة جديدة']].concat(ot.map(x=>[x.id,x.name]));
-  const tg=v=>v.sel=='new'?{ty:v.ty}:ot.find(x=>x.id==v.sel);
-  dlg('🌿 ربط بشجرة أخرى',
-    [{k:'sel',l:'اربط بـ',t:'sel',o,v:'new'}].concat(
-      ot.map(x=>({k:'pp'+x.id,l:'اختر الفرد المرتبط في «'+esc(x.name)+'»',t:'sel',o:Object.values(x.persons).map(q=>[q.id,q.n]),v:Object.keys(x.persons)[0],h:v=>v.sel!=x.id})),
-      [{k:'rel',l:'نوع علاقة الشجرة الجديدة',o:[['p','والدان (الخط من الأعلى)'],['s','إخوة (خط عرضي)']],v:'p',h:v=>(tg(v)||{}).ty=='fr'}],
-      [{k:'ty',l:'نوع الشجرة الجديدة',o:[['fam','🌳 عائلة'],['fr','🧑‍🤝‍🧑 أصدقاء']],v:'fam',h:v=>v.sel!='new'},
-       {k:'tn',l:'اسم الشجرة',t:'text',v:'',h:v=>v.sel!='new'},
-       {k:'cat',l:'الفئة (للأصدقاء)',t:'text',v:'أصدقاء',h:v=>v.sel!='new'||v.ty!='fr'}]
-    ),v=>{
-      snap();
-      if(v.sel&&v.sel!='new'){
-        p.links=p.links||[];p.links.push({br:v.sel,bp:v['pp'+v.sel],rel:v.rel||'p'});ch()
-      }else{
-        const nt=v.ty=='fr'?mkFr({ty:'fr',tn:v.tn,cat:v.cat,n:'صديق'},t.x+40,t.y+(TH[t.id]||200)+70):mkFam({ty:'fam',tn:v.tn,n:'مضاف'},t.x+40,t.y+(TH[t.id]||200)+70);
-        if(v.ty=='fr')nt.hid=1;
-        p.links=p.links||[];p.links.push({br:nt.id,bp:Object.keys(nt.persons)[0],rel:'p'});ch()
-      }
-    },null,'ربط');
-}
-function brSameTree(t,p){
-  const others=Object.values(t.persons).filter(x=>x.id!=p.id&&!x.ph);
-  if(!others.length){dlg('لا يوجد',[{k:'m',l:'لا يوجد أفراد آخرون في هذه الشجرة.',t:'text',v:''}],()=>{},null,'حسناً');return}
-  dlg('👥 ربط «'+esc(p.n)+'» بفرد من نفس الشجرة',
-    [{k:'other',l:'اختر الفرد',t:'sel',o:others.map(x=>[x.id,x.n]),v:others[0].id},
-     {k:'rel',l:'نوع العلاقة',o:[['w','زوج/زوجة'],['p','والد/والدة']],v:'w'}],
-    v=>{
-      snap();
-      const other=t.persons[v.other];if(!other)return;
-      if(v.rel=='w'){
-        const u=t.unions.find(x=>(x.p==p.id&&x.s==other.id)||(x.p==other.id&&x.s==p.id));
-        if(!u){
-          const side=hsd(t,p.id,'R')?'L':'R';
-          t.unions.push({id:uid(),p:p.id,s:other.id,side:side,kids:[]});
-          other.j=1;
-        }
-      }else if(v.rel=='p'){
-        const u=t.unions.find(x=>x.kids.includes(p.id)&&(x.p==other.id||x.s==other.id));
-        if(!u){
-          const existing=PU(t,p.id);
-          if(existing){
-            if(t.persons[existing.p].ph){existing.p=other.id}
-            else if(!existing.s){existing.s=other.id;existing.side='L';other.j=1}
-            else{alert('الفرد لديه والدان بالفعل');return}
-          }else{
-            t.unions.push({id:uid(),p:other.id,s:null,side:'R',kids:[p.id]});
-          }
-        }
-      }
-      ch()
-    },null,'ربط');
+/* لوحة الروابط: من متصل بمن، مع فك الرابط عن فرد معيّن */
+function openLinks(){
+  const draw=()=>{
+    const q=(($('#lq')||{}).value||'').trim(),rows=[];
+    boardTrees().forEach(t=>Object.values(t.persons).forEach(p=>linksOf(p).forEach((l,i)=>{
+      const c=boardTrees().find(x=>x.id==l.br);if(!c)return;
+      const dq=c.persons[l.bp]||Object.values(c.persons)[0];
+      let src=p.n;
+      if(p.ph){const u=t.unions.find(x=>x.p==p.id);src='إخوة: '+((u?u.kids:[]).map(k=>(t.persons[k]||{}).n).filter(Boolean).join('، '))}
+      rows.push({p,i,t,c,src,dst:dq?dq.n:'؟',rel:c.ty=='fr'?'شجرة أصدقاء':(l.rel=='s'?'إخوة':'والدان')});
+    })));
+    const f=rows.filter(r=>!q||r.src.includes(q)||r.dst.includes(q));
+    $('#lres').innerHTML=f.length?f.map((r,k)=>`<div class="lrow"><b>${esc(r.src)}</b><small>(${esc(r.t.name)})</small><span>⟶</span><b>${esc(r.dst)}</b><small>(${esc(r.c.name)})</small><em class="lt">${r.rel}</em><button data-k="${k}" class="rd">فك الرابط</button></div>`).join(''):'<div style="opacity:.6;padding:8px;text-align:center">لا توجد روابط</div>';
+    $('#lres').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const r=f[+b.dataset.k];snap();r.p.links.splice(r.i,1);ch();draw()});
+  };
+  $('#dl').innerHTML='<h3>🔗 الروابط بين الأفراد والأشجار</h3><label>ابحث بالاسم</label><input type="text" id="lq" placeholder="اكتب اسمًا..."><div id="lres"></div><div class="bt"><button id="cx">إغلاق</button></div>';
+  $('#ov').style.display='flex';$('#lq').oninput=draw;$('#cx').onclick=()=>{$('#ov').style.display='none'};draw();
 }
 function eyeToggle(p){
   snap();
@@ -1166,6 +1153,7 @@ function openSearch(){
   inp.oninput=doSearch;
   $('#cx').onclick=()=>{$('#ov').style.display='none'};
 }
+$('#lkm').onclick=openLinks;
 $('#sfBtn').onclick=openSearch;
 $('#sfInput').onfocus=openSearch;
 
