@@ -18,6 +18,8 @@ button{font:inherit;cursor:pointer;color:inherit}
 .p.impossible b{text-decoration:line-through}
 .p.stY{background:#e6f6e6}
 .p.stN{background:#fde6e6}
+.p.flash{animation:flashP 1.6s ease}
+@keyframes flashP{0%{box-shadow:0 0 0 0 #ffb300}50%{box-shadow:0 0 0 8px rgba(255,179,0,.75)}100%{box-shadow:0 0 0 0 rgba(255,179,0,0)}}
 .m{border-color:#9cc3ee}.f{border-color:#f2a9c9}
 .dead{background:#e2e2e2;color:#888;border-style:dashed}.dead b{opacity:.7}
 .p button{position:absolute;bottom:1px;left:3px;line-height:1}
@@ -31,6 +33,8 @@ button{font:inherit;cursor:pointer;color:inherit}
 .bg.c3{background:#f5c518}
 .bg.c2{background:#f0a04b}
 .bg.c1{background:#e5484d}
+.bg.confY{background:#3cb371}
+.bg.confN{background:#e5484d}
 #mb{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:none;flex-direction:column;gap:6px;align-items:stretch;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px 12px;z-index:40;max-width:94vw;min-width:min(640px,94vw)}
 #mb .r1{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px dashed var(--ln)}
 #mb .r1 button{border:2px solid var(--ln);border-radius:8px;padding:5px 10px;font-size:12px;background:var(--bg);display:flex;align-items:center;gap:6px}
@@ -88,7 +92,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 .tcnt:hover .pop{display:block}
 .tcnt .pop b{font-weight:600}
 .tcnt .m{color:#4a90d9}.tcnt .f{color:#e0568f}.tcnt .dl{color:#888}
-#wb{position:fixed;left:8px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px;font-size:12px;width:170px;z-index:20;max-height:70vh}
+#wb{position:fixed;left:8px;bottom:calc(90px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;background:var(--card);border:2px solid var(--ln);border-radius:12px;padding:8px;font-size:12px;width:170px;z-index:20;max-height:55vh}
 #wb .lbl{font-weight:600;font-size:13px;color:var(--ink);opacity:.85;margin-bottom:2px;text-align:center;flex:none}
 #wbList{display:flex;flex-direction:column;gap:3px;overflow:auto;flex:1 1 auto}
 #wbList button{width:100%;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:3px 6px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -101,12 +105,27 @@ button{font:inherit;cursor:pointer;color:inherit}
 #wbSide{position:fixed;left:190px;top:0;display:none;flex-direction:column;align-items:stretch;gap:4px;background:var(--card);border:2px solid var(--ln);border-radius:10px;padding:8px;font-size:12px;width:180px;max-height:60vh;overflow:auto;z-index:25}
 #wbSide button{display:block;width:100%;flex:none;text-align:right;background:var(--bg);border:1px solid var(--ln);border-radius:5px;padding:4px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #wbSide button:hover{background:#ffd95a;color:#222}
+/* البحث */
+#searchBox{background:var(--card);border:2px solid var(--ln);border-radius:10px 5px 11px 6px;padding:3px 8px;display:flex;align-items:center;gap:6px}
+#searchBox input{border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;width:140px}
+#searchBox button{background:none;border:0;font-size:15px;padding:0 4px}
+#searchRes{display:none;flex-direction:column;gap:6px;max-height:60vh;overflow:auto;margin-top:8px}
+.sres{background:var(--bg);border:2px solid var(--ln);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;display:flex;flex-direction:column;gap:2px}
+.sres:hover{background:#ffd95a;color:#222}
+.sres .nm{font-weight:700;font-size:14px}
+.sres .nm .hi{background:#ffe082;color:#222;border-radius:3px;padding:0 2px}
+.sres .par{font-size:11px;color:#555;opacity:.85}
+.sres:hover .par{color:#222}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><filter id="wbf"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter></svg>
 <div id="bd"><div id="cv"><svg id="lk" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none" fill="none" stroke="currentColor" stroke-width="2"></svg><div id="tr"></div></div></div>
 <div id="top">
   <h1>✏️ عدّاد المعازيم</h1>
   <div id="wbName" title="اسم المناسبة (اضغط للتعديل)">—</div>
+  <div id="searchBox" title="ابحث عن فرد">
+    <button id="sfBtn" title="بحث">🔍</button>
+    <input id="sfInput" type="text" placeholder="ابحث عن اسم..." autocomplete="off">
+  </div>
   <button class="tb" id="nt">➕ إضافة شجرة</button>
   <button class="tb" id="bk">💾 نسخ احتياطي</button>
   <button class="tb" id="ms">☑ تحديد</button>
@@ -139,6 +158,7 @@ let UNDO=[],UNDO_LOCK=false;
 let LAST_SAVED_SNAP='';
 let DRAG_P=null;
 let ROW_DRAG=null;
+let FLASH_ID=null;
 
 const uid=()=>Math.random().toString(36).slice(2,9);
 const LS_KEY='mz2',LS_OLD='mz',LS_BAK='mz_backup';
@@ -229,13 +249,15 @@ function ph(t,id,x,y,pl){
   const cat=p.cat?`<i class="pc">${esc(p.cat)}</i>`:'';
   const linkBtn=`<button data-a="br" class="${ln.length?'on':''}" title="ربط بشجرة أخرى">🌿</button>`;
   const eyeBtn=showEye?`<button data-a="eye" title="إظهار/إخفاء شجرة الأصدقاء">👁</button>`:'';
-  // إذا كان هناك تأكيد (y/n)، لا نعرض علامة التنبؤ
-  const hasConf=p.st==='y'||p.st==='n';
-  const pred=p.pred&&PRED[p.pred]&&!hasConf?PRED[p.pred]:null;
-  const isImp=p.pred=='p1'&&!hasConf;
-  const predDot=pred?`<em class="bg ${pred.c}" title="${esc(pred.l)}">${pred.sym}</em>`:'';
+  // علامة الزاوية: إن كان هناك تأكيد → تأكيد، وإلا → تنبؤ
+  let mark='';
+  if(p.st==='y')mark=`<em class="bg confY" title="أكّد الحضور">✔</em>`;
+  else if(p.st==='n')mark=`<em class="bg confN" title="اعتذر">✖</em>`;
+  else if(p.pred&&PRED[p.pred]){const pr=PRED[p.pred];mark=`<em class="bg ${pr.c}" title="${esc(pr.l)}">${pr.sym}</em>`;}
+  const isImp=p.pred=='p1'&&p.st!=='y'&&p.st!=='n';
   const stCls=p.st==='y'?'stY':(p.st==='n'?'stN':'');
-  return`<div class="p ${p.g} ${p.d?'dead':''} ${isImp?'impossible':''} ${stCls} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''}" data-i="${id}" data-t="${t.id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':predDot}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k}" data-a="${k}">+</u>`).join('')}</div>`
+  const fl=FLASH_ID===id?'flash':'';
+  return`<div class="p ${p.g} ${p.d?'dead':''} ${isImp?'impossible':''} ${stCls} ${fl} ${sel==id?'sel':''} ${MS.has(id)?'ms1':''}" data-i="${id}" data-t="${t.id}" style="left:${x-W/2}px;top:${y}px">${p.d?'':mark}${cat}<b>${esc(p.n)}</b><button data-a="ed" title="تعديل">✎</button>${linkBtn}<button data-a="ai" title="إضافة أفراد بالكتابة">✨</button>${eyeBtn}${[...pl].map(k=>`<u class="pl ${k}" data-a="${k}">+</u>`).join('')}</div>`
 }
 function tcnt(t){let m=0,f=0,dm=0,df=0;
  Object.values(t.persons).forEach(p=>{if(p.ph)return;if(p.d){p.g=='f'?df++:dm++;return}
@@ -416,6 +438,7 @@ function render(){
   });
 
   links();cnt();msUi();renderWbList();renderWbName();
+  if(FLASH_ID){setTimeout(()=>{FLASH_ID=null;render()},1600)}
 }
 function msUi(){
   document.body.classList.toggle('ms',MSON);
@@ -486,8 +509,6 @@ function links(){
   $('#lk').innerHTML=`<path d="${a}" stroke-width="2.5" stroke-linejoin="round" fill="none"/><path d="${b}" stroke-dasharray="7 6" fill="none"/>`;
 }
 function cnt(){
-  // تنبؤية: للأفراد بدون تأكيد فقط
-  // تأكيدية: للأفراد الذين عندهم y أو n
   const pred={p1:{m:0,f:0},p2:{m:0,f:0},p3:{m:0,f:0},p4:{m:0,f:0}};
   const conf={y:{m:0,f:0},n:{m:0,f:0},'':{m:0,f:0}};
   boardTrees().forEach(t=>Object.values(t.persons||{}).forEach(p=>{
@@ -853,21 +874,32 @@ function firstFam(t){dlg('إضافة أول فرد',pf(B()),v=>{snap();const n={
 
 const bd=$('#bd'),cv=$('#cv'),tf=()=>cv.style.transform='translate('+boardView().x+'px,'+boardView().y+'px) scale('+boardView().k+')';
 
-// الشجرة الفرعية للفرد: الفرد + أبناؤه فقط (ليس الزوجة، ليس الأحفاد، ليس أزواج الأبناء)
+// الشجرة الفرعية: الفرد + زوجه + أبناؤه + أحفاده (لكن ليس أزواج الأبناء)
 function familyGroup(t,id){
   const out=new Set([id]);
-  t.unions.filter(u=>u.p==id||u.s==id).forEach(u=>{
-    u.kids.forEach(k=>{if(!out.has(k))out.add(k)});
-  });
+  const pu=PU(t,id);
+  if(pu){const spouse=pu.p==id?pu.s:pu.p;if(spouse&&t.persons[spouse])out.add(spouse);}
+  const walk=(x)=>{
+    t.unions.filter(u=>u.p==x||u.s==x).forEach(u=>{
+      u.kids.forEach(k=>{
+        if(!out.has(k)){
+          out.add(k);
+          // زوج/زوجة الابن
+          const q=PU(t,k);
+          if(q){const sp=q.p==k?q.s:q.p;if(sp&&t.persons[sp]&&!out.has(sp))out.add(sp);}
+          walk(k);
+        }
+      });
+    });
+  };
+  walk(id);
   return out;
 }
 
 bd.addEventListener('pointerdown',e=>{
-  // في وضع التحديد: لا تبدأ السحب
   if(MSON){
     const th=e.target.closest('.th');
     if(th){
-      // يبقى السحب للشجرة متاحاً
       const t=boardTrees().find(x=>x.id==th.parentNode.dataset.t);if(!t)return;
       snap();
       const positions={};positions[t.id]={x:t.x,y:t.y,el:document.querySelector('.t[data-t="'+t.id+'"]')};
@@ -898,12 +930,37 @@ bd.addEventListener('pointerdown',e=>{
       try{bd.setPointerCapture(e.pointerId)}catch(_){}
       return;
     }
+    if(t&&t.ty==='fr'){
+      // سحب صف كامل: root + L + R
+      const p=t.persons[pids];if(!p)return;
+      const rootId=p.of&&t.persons[p.of]?p.of:pids;
+      const rootP=t.persons[rootId];if(!rootP)return;
+      const rowIds=new Set([rootId,...(rootP.L||[]),...(rootP.R||[])]);
+      const orig={};rowIds.forEach(i=>{const pp=t.persons[i];if(pp)orig[i]={x:pp.dx||0,y:pp.dy||0}});
+      ROW_DRAG={mode:'row',sx:e.clientX,sy:e.clientY,tid,rootId,rowIds,orig,moved:false,cat:rootP.cat};
+      try{bd.setPointerCapture(e.pointerId)}catch(_){}
+      return;
+    }
   }
   if(e.target.closest('.p,button:not(.mv),.plu,.cat-t'))return;
   drag={pan:1,sx:e.clientX,sy:e.clientY,a:boardView().x,b:boardView().y};
   try{bd.setPointerCapture(e.pointerId)}catch(_){}
 });
 bd.addEventListener('pointermove',e=>{
+  if(ROW_DRAG){
+    const dx=e.clientX-ROW_DRAG.sx,dy=e.clientY-ROW_DRAG.sy;
+    if(Math.abs(dy)>5){ROW_DRAG.moved=true}
+    if(!ROW_DRAG.moved)return;
+    const k=boardView().k;
+    const t=boardTrees().find(x=>x.id==ROW_DRAG.tid);if(!t)return;
+    ROW_DRAG.rowIds.forEach(i=>{
+      const p=t.persons[i];if(!p)return;
+      p.dx=(ROW_DRAG.orig[i]?.x||0);
+      p.dy=(ROW_DRAG.orig[i]?.y||0)+dy/k;
+    });
+    render();
+    return;
+  }
   if(!drag)return;
   const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
   if(drag.pan){const v=boardView();v.x=drag.a+dx;v.y=drag.b+dy;tf();return}
@@ -931,7 +988,95 @@ bd.addEventListener('pointermove',e=>{
     return;
   }
 });
-const up=()=>{
+const up=(e)=>{
+  if(ROW_DRAG){
+    const rd=ROW_DRAG;ROW_DRAG=null;
+    if(rd.moved){
+      // هل نسقط داخل نفس الفئة أم فئة أخرى؟
+      const t=boardTrees().find(x=>x.id==rd.tid);if(!t)return;
+      // ابحث عن الفئة المستهدفة
+      const pos=POS[rd.tid]||{};
+      const k=boardView().k;
+      const dxScreen=e.clientX-rd.sx,dyScreen=e.clientY-rd.sy;
+      const rootPos=pos[rd.rootId];
+      // احسب موقع الإفلات بإحداثيات الشجرة (نسبة إلى t.x, t.y)
+      // نستخدم إحداثيات الفأرة بالنسبة للشاشة ونحولها عبر التحويل الحالي
+      const cur=boardView();
+      const wx=(e.clientX-cur.x)/cur.k-t.x;
+      const wy=(e.clientY-cur.y)/cur.k-t.y;
+      // ابحث عن أي فئة تقع ضمنها
+      const cats=Object.values(POS[t.id]||{}).filter(x=>x&&x.root); // لا يفيد
+      // استخدم بيانات الفئات مباشرة
+      // نحتاج إعادة بناء catData — نكررها بسيطاً:
+      const myCats=(()=>{
+        const catsArr=Array.from(new Set([...t.cats,...Object.values(t.persons).map(p=>p.cat)]));
+        const out=[];
+        // نفس منطق render لحساب cy
+        return null;
+      })();
+      // الحل الأبسط: نكتشف الفئة من خلال إحداثي y للفأرة بالنسبة لمستطيل كل cat
+      const catEls=document.querySelectorAll('.t[data-t="'+t.id+'"] .cat');
+      let targetCat=null;
+      catEls.forEach(el=>{
+        const r=el.getBoundingClientRect();
+        if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+          targetCat=decodeURIComponent(el.dataset.cat);
+        }
+      });
+      if(!targetCat){
+        // خارج أي فئة: نُعيده لمكانه (نصفّر dy)
+        rd.rowIds.forEach(i=>{const p=t.persons[i];if(p){p.dx=rd.orig[i].x;p.dy=rd.orig[i].y}});
+        snap();ch();return;
+      }
+      if(targetCat===rd.cat){
+        // داخل نفس الفئة: رتّب حسب y
+        // اجمع كل الصفوف في نفس الفئة
+        const catIds=Object.values(t.persons).filter(p=>p.cat===rd.cat).map(p=>p.id);
+        const rows=buildRowsFr(t,catIds,rd.cat);
+        // ابحث عن أقرب صف للموقع
+        const catEl=[...catEls].find(el=>decodeURIComponent(el.dataset.cat)===rd.cat);
+        const catRect=catEl?catEl.getBoundingClientRect():null;
+        let bestIdx=0;
+        if(catRect){
+          rows.forEach((r,i)=>{
+            const y=catRect.top+(26 + i*(H+16))*boardView().k;
+            if(e.clientY>y)bestIdx=i+1;
+          });
+        }
+        const rootIds=rows.map(r=>r.root);
+        const curIdx=rootIds.indexOf(rd.rootId);
+        if(curIdx>=0){rootIds.splice(curIdx,1); if(bestIdx>curIdx)bestIdx--; rootIds.splice(bestIdx,0,rd.rootId)}
+        t.rowOrder[rd.cat]=rootIds;
+        // نصفّر الإزاحات
+        rd.rowIds.forEach(i=>{const p=t.persons[i];if(p){p.dx=0;p.dy=0}});
+        snap();ch();return;
+      }
+      // فئة أخرى: اسأل
+      const targetC=targetCat;
+      // استرجع الإزاحة قبل السؤال
+      rd.rowIds.forEach(i=>{const p=t.persons[i];if(p){p.dx=rd.orig[i].x;p.dy=rd.orig[i].y}});
+      render();
+      $('#dl').innerHTML='<h3>نقل إلى فئة «'+esc(targetC)+'»</h3><p style="margin:6px 0;font-size:13px">هل تريد نقل الصف كامل، أم الفرد الوحيد؟</p><div class="bt"><button id="ok1">نقل الصف كامل</button><button id="ok2">نقل الفرد الوحيد</button><button id="cx">إلغاء</button></div>';
+      $('#ov').style.display='flex';
+      $('#ok1').onclick=()=>{
+        snap();
+        rd.rowIds.forEach(i=>{const p=t.persons[i];if(p)p.cat=targetC});
+        t.rowOrder[rd.cat]=(t.rowOrder[rd.cat]||[]).filter(r=>r!=rd.rootId);
+        t.rowOrder[targetC]=[...(t.rowOrder[targetC]||[]),rd.rootId];
+        $('#ov').style.display='none';ch();
+      };
+      $('#ok2').onclick=()=>{
+        snap();
+        const p=t.persons[rd.rootId];if(p){p.cat=targetC;}
+        if(p&&p.of){const hp=t.persons[p.of];if(hp){hp.L=(hp.L||[]).filter(x=>x!=p.id);hp.R=(hp.R||[]).filter(x=>x!=p.id)}delete p.of}
+        t.rowOrder[rd.cat]=(t.rowOrder[rd.cat]||[]).filter(r=>r!=rd.rootId);
+        t.rowOrder[targetC]=[...(t.rowOrder[targetC]||[]),rd.rootId];
+        $('#ov').style.display='none';ch();
+      };
+      $('#cx').onclick=()=>{$('#ov').style.display='none';};
+    }
+    return;
+  }
   if(!drag)return;
   const mode=drag.mode;
   if(mode==='person'&&DRAG_P&&DRAG_P.moved){snap()}
@@ -959,6 +1104,81 @@ $('#mb').onclick=e=>{const m=e.target.dataset.m;if(!m)return;
  else if(m=='del'){boardTrees().forEach(t=>{Array.from(MS).forEach(id=>{if(t.persons[id]){delP(t,id)}})});MS.clear()}
  else{boardTrees().forEach(t=>MS.forEach(id=>{const p=t.persons[id];if(p){if(m=='0')delete p.st;else if(!p.d)p.st=m}}));MS.clear()}
  ch()};
+
+/* ===== البحث ===== */
+function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function parentNames(t,id){
+  const u=PU(t,id);
+  if(!u)return {f:'',m:''};
+  const p=t.persons[u.p],s=u.s?t.persons[u.s]:null;
+  let f='',m='';
+  if(p&&s){if(p.g=='m'){f=p.n;m=s.n}else{f=s.n;m=p.n}}
+  else if(p)f=(p.g=='m')?p.n:'';
+  else if(s)m=(s.g=='f')?s.n:'';
+  return {f,m};
+}
+function depthOf(t,id){
+  // نستخدم lay لإيجاد r
+  const b=lay(t,root(t));
+  const a=b.it.find(x=>x.i==id);
+  return a?a.r:999;
+}
+function openSearch(){
+  $('#dl').innerHTML='<h3>🔍 بحث عن فرد</h3><label>اكتب الاسم الأول</label><input type="text" id="sf"><div id="searchRes"></div><div class="bt"><button id="cx">إغلاق</button></div>';
+  $('#ov').style.display='flex';
+  const inp=$('#sf');setTimeout(()=>inp.focus(),50);
+  const res=$('#searchRes');
+  const doSearch=()=>{
+    const q=(inp.value||'').trim();
+    res.innerHTML='';
+    if(!q)return;
+    const items=[];
+    boardTrees().forEach(t=>{
+      Object.values(t.persons).forEach(p=>{
+        if(!p||p.ph)return;
+        if(!p.n)return;
+        if(p.n.indexOf(q)===-1)return;
+        const par=parentNames(t,p.id);
+        items.push({t,p,par,depth:depthOf(t,p.id)});
+      });
+    });
+    if(!items.length){res.innerHTML='<div style="text-align:center;opacity:.6;padding:8px">لا نتائج</div>';return}
+    // ترتيب حسب القرب من الأعلى (depth)
+    items.sort((a,b)=>a.depth-b.depth);
+    const rx=new RegExp('('+escapeRegex(q)+')','g');
+    items.slice(0,80).forEach(it=>{
+      const div=document.createElement('div');
+      div.className='sres';
+      const highlighted=esc(it.p.n).replace(rx,'<span class="hi">$1</span>');
+      let parTxt='';
+      if(it.par.f||it.par.m){
+        parTxt='ابن '+ (it.par.f?esc(it.par.f):'؟') +' و '+ (it.par.m?esc(it.par.m):'؟');
+      }
+      div.innerHTML=`<div class="nm">${highlighted}</div>${parTxt?`<div class="par">${parTxt}</div>`:''}`;
+      div.onclick=()=>{
+        $('#ov').style.display='none';
+        // انتقل إلى الفرد
+        const q2=POS[it.t.id]&&POS[it.t.id][it.p.id];
+        if(!q2)return;
+        const X=it.t.x+q2.x+ (it.t.ty=='fr'?24:OX[it.t.id]) + (it.t.ty=='fr'?0:W/2);
+        const Y=it.t.y+q2.y+ (it.t.ty=='fr'?H/2:58+42+H/2);
+        const v=boardView();
+        v.x=innerWidth/2 - X*v.k;
+        v.y=innerHeight/2 - Y*v.k;
+        FLASH_ID=it.p.id;
+        sel=it.p.id;
+        tf();render();
+      };
+      res.appendChild(div);
+    });
+  };
+  inp.oninput=doSearch;
+  inp.onkeydown=(e)=>{if(e.key==='Enter')doSearch()};
+  $('#cx').onclick=()=>{$('#ov').style.display='none'};
+}
+$('#sfBtn').onclick=openSearch;
+$('#sfInput').onfocus=openSearch;
+$('#sfInput').onclick=openSearch;
 
 $('#nt').onclick=()=>{
   dlg('إضافة شجرة جديدة',[{k:'ty',l:'النوع',o:[['fam','🌳 شجرة عائلة'],['fr','🧑‍🤝‍🧑 شجرة أصدقاء']],v:'fam'},
